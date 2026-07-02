@@ -1579,7 +1579,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "crJkS0F_YDOCgpctgWLL14:APA91bHMaSYTonzJIN65R92cekRGQ_jYcoF-SkDvmELD129XJ5z1RD6yGCyw6ANsKtfgGq9bAqwK36kS-DoJRfFM7rQvqCCdE0Fobvei-R9SVy6vB3LeEUgxu6a4zG-PlfCM2m0IrVIb",
+							"raw": "EXAMPLE_FCM_DEVICE_TOKEN",
 							"options": {
 								"raw": {
 									"language": "text"
@@ -1607,7 +1607,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "crJkS0F_YDOCgpctgWLL14:APA91bHMaSYTonzJIN65R92cekRGQ_jYcoF-SkDvmELD129XJ5z1RD6yGCyw6ANsKtfgGq9bAqwK36kS-DoJRfFM7rQvqCCdE0Fobvei-R9SVy6vB3LeEUgxu6a4zG-PlfCM2m0IrVIb",
+							"raw": "EXAMPLE_FCM_DEVICE_TOKEN",
 							"options": {
 								"raw": {
 									"language": "text"
