@@ -1,0 +1,93 @@
+| key                       | types      | occurrences | percents              |
+| ------------------------- | ---------- | ----------- | --------------------- |
+| _id                       | ObjectId   |       12549 | 100.00000000000000000 |
+| postKey                   | String     |       12549 | 100.00000000000000000 |
+| type                      | String     |       12549 | 100.00000000000000000 |
+| winnerGroupKey            | String     |       12549 | 100.00000000000000000 |
+| postId                    | String     |       12548 |  99.99203123754881517 |
+| coordinates               | Object     |       12543 |  99.95218742529284839 |
+| coordinates.latitude      | Number     |       12543 |  99.95218742529284839 |
+| coordinates.longitude     | Number     |       12543 |  99.95218742529284839 |
+| placeKey                  | String     |       10984 |  87.52888676388556632 |
+| userKey                   | String     |        8672 |  69.10510797673121886 |
+| sponsored                 | Boolean    |        3217 |  25.63550880548250888 |
+| available                 | Boolean    |        2875 |  22.91019204717507307 |
+| timestamp                 | NumberLong |        2875 |  22.91019204717507307 |
+| title                     | String     |        2549 |  20.31237548808670113 |
+| imageUrls[]                 | Object     |        2467 |  19.65893696708901217 |
+| details                   | String     |         747 |   5.95266555103992356 |
+| loserGroupKey             | String     |         663 |   5.28328950513985163 |
+| richLinkData              | Object     |          62 |   0.49406327197386246 |
+| richLinkData.canonicalUrl | String     |          62 |   0.49406327197386246 |
+| richLinkData.description  | String     |          62 |   0.49406327197386246 |
+| richLinkData.imageUrl     | String     |          62 |   0.49406327197386246 |
+| richLinkData.originalUrl  | String     |          62 |   0.49406327197386246 |
+| richLinkData.title        | String     |          62 |   0.49406327197386246 |
+| link                      | String     |           3 |   0.02390628735357399 |
+
+
+db.getCollection('posts').aggregate([
+{$addFields: {
+    postKey: {$ifNull: ["$postKey", "$postId"]},
+    location: {type: "Point", coordinates: ["$location.longitude", "$location.latitude"]},
+    "location.longitude": "$REMOVE",
+    "location.latitude": "$REMOVE",
+    timestamp: {$ifNull : [{ $toDate: { $toLong: "$timestamp"}}, new ISODate()]}
+    }},
+{$match: {postKey: {$exists: true}}},
+{$unset: ["serverTimestamp", "serverTimestamp2", "available", "willBeAvailable", "dateTimestamp", "timeTimestamp", "link", "imageUrls"]},
+{$out: {db: "orbis-converted", coll: "posts"}}
+])
+
+| _id                       | ObjectId |       12549 | 100.00000000000000000 |
+| location                  | Object   |       12549 | 100.00000000000000000 |
+| location.coordinates      | Array    |       12549 | 100.00000000000000000 |
+| location.type             | String   |       12549 | 100.00000000000000000 |
+| postKey                   | String   |       12549 | 100.00000000000000000 |
+| timestamp                 | Date     |       12549 | 100.00000000000000000 |
+| type                      | String   |       12549 | 100.00000000000000000 |
+| winnerGroupKey            | String   |       12549 | 100.00000000000000000 |
+| postId                    | String   |       12548 |  99.99203123754881517 |
+| coordinates               | Object   |       12543 |  99.95218742529284839 |
+| coordinates.latitude      | Number   |       12543 |  99.95218742529284839 |
+| coordinates.longitude     | Number   |       12543 |  99.95218742529284839 |
+| geohash                   | String   |       12543 |  99.95218742529284839 |
+| placeKey                  | String   |       10984 |  87.52888676388556632 |
+| userKey                   | String   |        8672 |  69.10510797673121886 |
+| sponsored                 | Boolean  |        3217 |  25.63550880548250888 |
+| title                     | String   |        2549 |  20.31237548808670113 |
+| details                   | String   |         747 |   5.95266555103992356 |
+| loserGroupKey             | String   |         663 |   5.28328950513985163 |
+| richLinkData              | Object   |          62 |   0.49406327197386246 |
+| richLinkData.canonicalUrl | String   |          62 |   0.49406327197386246 |
+| richLinkData.description  | String   |          62 |   0.49406327197386246 |
+| richLinkData.imageUrl     | String   |          62 |   0.49406327197386246 |
+| richLinkData.originalUrl  | String   |          62 |   0.49406327197386246 |
+| richLinkData.title        | String   |          62 |   0.49406327197386246 |
+| imageUrls                 | array    |           0 |   0.0                 |
+
+db.getCollection('posts').aggregate([
+{$match: { postKey: "-LUfuA44pxocdvEnR-0p"}},
+
+{$lookup: {from: "places", localField: "placeKey", foreignField: "placeKey", as: "place"}},
+{$unwind: { path: "$place", preserveNullAndEmptyArrays: true}},
+
+{$lookup: {from: "groups", localField: "groupKey", foreignField: "groupKey", as: "group"}},
+{$unwind: { path: "$group", preserveNullAndEmptyArrays: true}},
+
+{$lookup: {from: "groups", localField: "winnerGroupKey", foreignField: "groupKey", as: "winnerGroup"}},
+{$unwind: { path: "$winnerGroup", preserveNullAndEmptyArrays: true}},
+
+{$lookup: {from: "groups", localField: "loserGroupKey", foreignField: "groupKey", as: "loserGroup"}},
+{$unwind: { path: "$loserGroup", preserveNullAndEmptyArrays: true}},
+
+
+{$lookup: {from: "users", localField: "userKey", foreignField: "userKey", as: "user"}},
+{$unwind: { path: "$user", preserveNullAndEmptyArrays: true}},
+
+{$unset: [
+    "group.admins", "group.members", "group.followers",
+    "winnerGroup.admins", "winnerGroup.members", "winnerGroup.followers",
+    "loserGroup.admins", "loserGroup.members", "loserGroup.followers",
+    ]}
+])

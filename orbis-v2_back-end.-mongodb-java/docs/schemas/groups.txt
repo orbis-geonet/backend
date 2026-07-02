@@ -1,0 +1,187 @@
++---------------------------------------------------------------------------------------+
+| key                | types                        | occurrences | percents            |
+| ------------------ | ---------------------------- | ----------- | ------------------- |
+| _id                | ObjectId                     |         561 | 100.000000000000000 |
++| colorIndex         | Number                       |         561 | 100.000000000000000 |
++| deleted            | Boolean                      |         561 | 100.000000000000000 |
++| description        | String                       |         561 | 100.000000000000000 |
+| geohash            | String                       |         561 | 100.000000000000000 |
++| imageName          | String                       |         561 | 100.000000000000000 |
++| key                | String                       |         561 | 100.000000000000000 | -> groupKey
++| location           | Object                       |         561 | 100.000000000000000 | -> GeoJson
+| location.latitude  | Number                       |         561 | 100.000000000000000 |
+| location.longitude | Number                       |         561 | 100.000000000000000 |
++| name               | String                       |         561 | 100.000000000000000 |
++| solidColorHex      | String                       |         561 | 100.000000000000000 |
++| strokeColorHex     | String                       |         561 | 100.000000000000000 |
++| timestamp          | NumberLong (522),Number (39) |         561 | 100.000000000000000 | -> toDate
++| groupId            | String                       |         560 |  99.821746880570416 | -> groupKey
++| os                 | String                       |         526 |  93.761140819964353 |
+| lowercaseName      | String                       |         326 |  58.110516934046345 |
+| fromRoom           | Boolean                      |         148 |  26.381461675579324 |
++---------------------------------------------------------------------------------------+
+find out each group user membership
+db.getCollection('usersByGroup').aggregate([
+{$lookup: {from: "users", localField: "userId", foreignField: "userId", as: "user"}},
+{$lookup: {from: "groups", localField: "groupId", foreignField: "key", as: "group"}}
+])
+
+Roles:
+ADMINISTRATOR - 0, MEMBER - 1, FOLLOWER - 2
+
+Users:
+  User:
+  Administrator: [groupKeys]
+  Member: [groupKeys]
+  Follower: [groupKeys]
+
+add membership information to users
+db.getCollection('users').aggregate([
+{$addFields: {userKey: {$ifNull: ["$userId", "$uid"]}}},
+{$match: {userKey: {$exists: true}}},
+{$lookup: {from: "usersByGroup", localField: "userKey", foreignField: "userId", as: "groups"}},
+{$addFields: {
+    admin: {$map: { input: {$filter: {input: "$groups", cond: {$eq: ["$$this.0", true]}}}, in: "$$this.groupId"}},
+    member: {$map: { input: {$filter: {input: "$groups", cond: {$eq: ["$$this.1", true]}}}, in: "$$this.groupId"}},
+    follower: {$map: { input: {$filter: {input: "$groups", cond: {$eq: ["$$this.2", true]}}}, in: "$$this.groupId"}},
+    groups: "$REMOVE"
+    }},
+{$project: {userKey: 1, admin: 1, member: 1, follower: 1}},
+{$merge: {
+    into: {db: "orbis-converted", coll: "users"},
+    on: "userKey",
+    whenMatched: "merge",
+    whenNotMatched: "discard"
+    }}
+])
+
+Groups:
+  Group
+  Administrators: [userKeys]
+  Members: [userKeys]
+  Followers: [userKeys]
+
+db.getCollection('groups').aggregate([
+{$addFields: {
+    groupKey: {$ifNull: ["$key", "$groupId"]},
+    location: {type: "Point", coordinates: ["$location.longitude", "$location.latitude"]},
+    "location.longitude": "$REMOVE",
+    "location.latitude": "$REMOVE",
+    timestamp: { $toDate: { $toLong: "$timestamp"}}
+    }},
+{$match: {groupKey: {$exists: true}}},
+{$lookup: {from: "usersByGroup", localField: "groupKey", foreignField: "groupId", as: "users"}},
+{$addFields: {
+    admins: {$map: { input: {$filter: {input: "$users", cond: {$eq: ["$$this.0", true]}}}, in: "$$this.userId"}},
+    members: {$map: { input: {$filter: {input: "$users", cond: {$eq: ["$$this.1", true]}}}, in: "$$this.userId"}},
+    followers: {$map: { input: {$filter: {input: "$users", cond: {$eq: ["$$this.2", true]}}}, in: "$$this.userId"}},
+    users: "$REMOVE"
+    }},
+{$project: {key: 0, lowercaseName: 0, geohash: 0, groupId: 0, fromRoom: 0}},
+{$out: { db: "orbis-converted", coll: "groups"}}
+])
+
+converted:
++--------------------------------------------------------------------+
+| key                  | types    | occurrences | percents           |
+| -------------------- | -------- | ----------- | ------------------ |
+| _id                  | ObjectId |         561 | 100.00000000000000 |
+| admins               | Array    |         561 | 100.00000000000000 |
+| colorIndex           | Number   |         561 | 100.00000000000000 |
+| deleted              | Boolean  |         561 | 100.00000000000000 |
+| description          | String   |         561 | 100.00000000000000 |
+| followers            | Array    |         561 | 100.00000000000000 |
+| groupKey             | String   |         561 | 100.00000000000000 |
+| imageName            | String   |         561 | 100.00000000000000 |
+| location             | Object   |         561 | 100.00000000000000 |
+| location.coordinates | Array    |         561 | 100.00000000000000 |
+| location.type        | String   |         561 | 100.00000000000000 |
+| members              | Array    |         561 | 100.00000000000000 |
+| name                 | String   |         561 | 100.00000000000000 |
+| solidColorHex        | String   |         561 | 100.00000000000000 |
+| strokeColorHex       | String   |         561 | 100.00000000000000 |
+| timestamp            | Date     |         561 | 100.00000000000000 |
+| os                   | String   |         526 |  93.76114081996435 |
++--------------------------------------------------------------------+
+
+
+Basic aggregation to get user details:
+db.getCollection('groups').aggregate([
+{$match: { deleted: false }}, // <-- query
+{$skip: 10}, // <-- pageable
+{$limit: 10}, // <-- pageable
+{$project: {deleted: 0}},
+{$lookup: {from: "users", let: {adminKeys: "$admins"}, pipeline: [
+    {$match: { $expr: {
+          $and: [
+          { $in: ["$userKey", "$$adminKeys"]},
+          { $lte: ["$deleted", false]},
+          { $or:[
+                {$lte: ["$groupsArePublic", null]},
+                "$groupsArePublic"
+              ]}
+          ]
+        }}},
+     {$project: {coordinates: 1,
+    userKey: 1,
+    username: 1,
+    providerImageUrl: 1,
+    unit: 1,
+    imageName: 1,
+    placesArePublic: 1,
+    groupsArePublic: 1,
+    language: 1,
+    dateOfBirth: 1,
+    gender: 1,
+}}
+  ], as: "admins"}},
+{$lookup: {from: "users", let: {memberKeys: "$members"}, pipeline: [
+    {$match: { $expr: {
+          $and: [
+          { $in: ["$userKey", "$$memberKeys"]},
+          { $lte: ["$deleted", false]},
+          { $or:[
+                {$lte: ["$groupsArePublic", null]},
+                "$groupsArePublic"
+              ]}
+          ]
+        }}},
+     {$project: {coordinates: 1,
+    userKey: 1,
+    username: 1,
+    providerImageUrl: 1,
+    unit: 1,
+    imageName: 1,
+    placesArePublic: 1,
+    groupsArePublic: 1,
+    language: 1,
+    dateOfBirth: 1,
+    gender: 1,
+}}
+  ], as: "members"}},
+
+{$lookup: {from: "users", let: {followerKeys: "$followers"}, pipeline: [
+    {$match: { $expr: {
+          $and: [
+          { $in: ["$userKey", "$$followerKeys"]},
+          { $lte: ["$deleted", false]},
+          { $or:[
+                {$lte: ["$groupsArePublic", null]},
+                "$groupsArePublic"
+              ]}
+          ]
+        }}},
+     {$project: {coordinates: 1,
+    userKey: 1,
+    username: 1,
+    providerImageUrl: 1,
+    unit: 1,
+    imageName: 1,
+    placesArePublic: 1,
+    groupsArePublic: 1,
+    language: 1,
+    dateOfBirth: 1,
+    gender: 1,
+}}
+  ], as: "followers"}}
+])

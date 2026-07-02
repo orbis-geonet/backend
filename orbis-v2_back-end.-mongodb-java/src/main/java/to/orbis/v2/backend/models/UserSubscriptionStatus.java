@@ -1,0 +1,13 @@
+package to.orbis.v2.backend.models;
+
+public enum UserSubscriptionStatus {
+    START_PAYMENT,
+    ACTIVATED,
+    DEACTIVATED_REQUEST,
+    DEACTIVATED,
+    FAIL_PAYMENT,
+    CANCELED_BY_STRIPE_INCOMPLETE_PAYMENT,
+    SUBSCRIPTION_WITH_ERROR,
+    START_SUBSCRIPTION_PROCESS,
+    FINISHED;
+}

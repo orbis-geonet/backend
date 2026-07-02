@@ -1,0 +1,87 @@
+services:
+
+  # ─── MongoDB (replica set) ─────────────────────────────────────────────────
+  orbis-mongo:
+    image: mongo:7
+    container_name: orbis-mongo
+    command: ["--replSet", "rs0"]
+    volumes:
+      - orbis-mongo-data:/data/db
+    networks:
+      - orbis-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # One-shot container that initiates the replica set on first boot.
+  # It exits after running and is ignored on subsequent starts.
+  orbis-mongo-init:
+    image: mongo:7
+    container_name: orbis-mongo-init
+    depends_on:
+      orbis-mongo:
+        condition: service_healthy
+    networks:
+      - orbis-net
+    restart: "no"
+    entrypoint: >
+      mongosh --host orbis-mongo:27017 --quiet --eval
+      "try { rs.status().ok && quit(0) } catch(e) {}
+       rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'orbis-mongo:27017' }] })"
+
+  # ─── Clone proxy 1 ────────────────────────────────────────────────────────
+  orbis-clone-proxy:
+    build:
+      context: ./clone-proxy
+    image: orbis-clone-proxy
+    container_name: orbis-clone-proxy
+    networks:
+      - orbis-net
+    env_file: ./clone-proxy/.env
+    environment:
+      JAVA_BACKEND_URL: "http://orbis-api:8080"
+    volumes:
+      - ./clone-proxy/wallet/wallet1.json:/app/wallet/wallet.json:ro
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    depends_on:
+      orbis-mongo:
+        condition: service_healthy
+
+  # ─── Java Spring Boot backend ──────────────────────────────────────────────
+  orbis-api:
+    build:
+      context: ./orbis-v2_back-end.-mongodb-java
+    image: orbis-backend
+    container_name: orbis-api
+    networks:
+      - orbis-net
+    ports:
+      - "8080:8080"
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /app/secrets.json
+      ORBIS_API_SECRET: 'test_key'
+      SPRING_PROFILES_ACTIVE: prod-local
+      SPRING_DATA_MONGODB_URI: "mongodb://orbis-mongo:27017/?retryWrites=true"
+      NODEJS_WORKER_URL: "http://orbis-clone-proxy:3000"
+    volumes:
+      - ./orbis-v2_back-end.-mongodb-java/firebase/secrets.json:/app/secrets.json:ro
+    restart: unless-stopped
+    depends_on:
+      orbis-mongo:
+        condition: service_healthy
+      orbis-clone-proxy:
+        condition: service_started
+
+networks:
+  orbis-net:
+    external: true
+
+volumes:
+  orbis-mongo-data:
+    external: true

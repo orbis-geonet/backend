@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Document</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <div id="canvas-and-log">
+    <canvas id="canvas" width="0" height="0"></canvas>
+    <div id="infobox"></div>
+  </div>
+  <button id="clearCanvas" style="position: absolute; transform: translateY(-21px);">Clear</button>
+  <div style="display: flex; margin-top: 20px; gap: 50px;">
+    <div>
+      <div>Speed</div>
+      <input style="width: 300px; max-width: 90vw; margin-bottom: 10px;" type="range" id="speed" value="1" min="0" max="100" />
+
+      <div class="time-container">
+        <div class="time">
+          <div>Year</div>
+          <div class="button-container">
+            <div id="year"></div>
+            <button class="button" id="increaseYear">+</button>
+          </div>
+        </div>
+        <div class="time">
+          <div>Month</div>
+          <div class="button-container">
+            <div id="month"></div>
+            <button class="button" id="increaseMonth">+</button>
+          </div>
+        </div>
+        <div class="time">
+          <div>Day</div>
+          <div class="button-container">
+            <div id="day"></div>
+            <button class="button" id="increaseDay">+</button>
+          </div>
+        </div>
+        <div class="time">
+          <div>Hour</div>
+          <div class="button-container">
+            <div id="hour"></div>
+            <button class="button" id="increaseHour">+</button>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; justify-content: space-around;">
+          <button id="startTime">Start Time</button>
+          <button id="stopTime">Stop Time</button>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <div>Checkins per hour</div>
+        <input type="number" id="checkinsPerHour" value="50" style="display: block; margin-bottom: 10px;" />
+        <button id="startCheckins">Start Checkins</button>
+        <button id="stopCheckins">Stop Checkins</button>
+
+        <div style="margin-top: 10px;">
+          <label for="touchingPlacesMode">Touching places mode:</label>
+          <select id="touchingPlacesMode">
+            <option value="strong">New</option>
+            <option value="weak">Old</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p>Add new Place of group:</p>
+      <div style="margin-bottom: 10px;">
+        <input type="radio" id="group1" name="group" value="0" checked />
+        <label style="margin-right: 10px;" for="group1">Group 0</label>
+
+        <input type="radio" id="group2" name="group" value="1" />
+        <label style="margin-right: 10px;" for="group2">Group 1</label>
+
+        <input type="radio" id="group3" name="group" value="2" />
+        <label style="margin-right: 10px;" for="group3">Group 2</label>
+
+        <input type="radio" id="group4" name="group" value="3" />
+        <label style="margin-right: 10px;" for="group4">Group 3</label>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr;">
+        <div>
+          <input type="checkbox" id="showGroupColors" checked />
+          <label for="showGroupColors">Show group colors</label>
+        </div>
+
+        <div>
+          <input type="checkbox" id="showTripwires" />
+          <label for="showTripwires">Show tripwires</label>
+        </div>
+
+        <div>
+          <input type="checkbox" id="showCenters" />
+          <label for="showCenters">Show centers</label>
+        </div>
+
+        <div>
+          <input type="checkbox" id="showPlacesInsidePolygons" checked />
+          <label for="showPlacesInsidePolygons">Show places inside polygons</label>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+        <button id="imageUploadButton">Upload image for selected group</button>
+      </div>
+
+      <div style="margin-top: 10px;">
+        <input type="checkbox" id="showPolygonOutline" checked />
+        <label for="showPolygonOutline">Show polygon outline</label>
+      </div>
+
+      <div>
+        <input type="checkbox" id="showIconOutline" checked />
+        <label for="showIconOutline">Show icon outline</label>
+      </div>
+    </div>
+
+    <div>
+      <div>
+        <input name="polygonFill" type="radio" id="noFillPolygon" />
+        <label for="noFillPolygon">Don't fill polygon</label>
+      </div>
+
+      <div>
+        <input name="polygonFill" type="radio" id="fillPolygonWithColor" checked />
+        <label for="fillPolygonWithColor">Fill polygon with color</label>
+      </div>
+
+      <div>
+        <input name="polygonFill" type="radio" id="fillPolygonWithIcon" />
+        <label for="fillPolygonWithIcon">Fill polygon with icon</label>
+      </div>
+
+      <div>
+        <input name="polygonFill" type="radio" id="fillPolygonWithIconMaintainingAspectRatio" />
+        <label for="fillPolygonWithIconMaintainingAspectRatio">Fill polygon with icon (aspect ratio)</label>
+      </div>
+
+      <div>
+        <input name="polygonFill" type="radio" id="fillPolygonWithIconBorder" />
+        <label for="fillPolygonWithIconBorder">Fill polygon with icon border</label>
+      </div>
+
+      <div>
+        <input name="polygonFill" type="radio" id="fillPolygonWithIconBorderDominantColor" />
+        <label for="fillPolygonWithIconBorderDominantColor">Fill polygon with icon borders dominant color</label>
+      </div>
+
+      <div>
+        <input name="polygonFill" type="radio" id="fillPolygonWithIconBorderContinuously" />
+        <label for="fillPolygonWithIcon">Fill polygon with icon border continuously</label>
+      </div>
+
+      <div>
+        <input name="polygonFill" type="radio" id="fillPolygonWithDominantColor" />
+        <label for="fillPolygonWithDominantColor">Fill polygon with dominant color</label>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tinyqueue"></script>
+  <script src="https://cdn.jsdelivr.net/npm/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6.5.0/turf.min.js"></script>
+  <script src="index.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,2916 @@
+{
+	"info": {
+		"_postman_id": "fbc35da5-829f-44d3-97c2-1aa4f66bb7f2",
+		"name": "orbis_v2",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "groups",
+			"item": [
+				{
+					"name": "findGroups",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Orbis-Coordinates",
+								"value": "-51.81;-29.47",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/groups?size=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups"
+							],
+							"query": [
+								{
+									"key": "listMembers",
+									"value": "true",
+									"disabled": true
+								},
+								{
+									"key": "name",
+									"value": "so",
+									"disabled": true
+								},
+								{
+									"key": "longitude",
+									"value": "81.52634089681207",
+									"disabled": true
+								},
+								{
+									"key": "latitude",
+									"value": "27.630246109843632",
+									"disabled": true
+								},
+								{
+									"key": "size",
+									"value": "20"
+								},
+								{
+									"key": "distance",
+									"value": "5000",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "recommendedGroups",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/recommended?longitude=-51.81&latitude=-29.47&size=5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								"recommended"
+							],
+							"query": [
+								{
+									"key": "longitude",
+									"value": "-51.81"
+								},
+								{
+									"key": "latitude",
+									"value": "-29.47"
+								},
+								{
+									"key": "size",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ratedGroups",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/rating?longitude=-51.81&latitude=-29.47&timePeriod=7&size=25",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								"rating"
+							],
+							"query": [
+								{
+									"key": "longitude",
+									"value": "-51.81"
+								},
+								{
+									"key": "latitude",
+									"value": "-29.47"
+								},
+								{
+									"key": "timePeriod",
+									"value": "7"
+								},
+								{
+									"key": "size",
+									"value": "25"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "addGroup",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Astartes8\",\n  \"location\": {\n    \"longitude\": -53,\n    \"latitude\": -21\n  },\n  \"description\": \"Some lengthy group description to make validation happy. It's also a fun group to go places and conquer them in the name of EMPEROR! 140 characters are quite long indeed.\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/groups",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups"
+							],
+							"query": [
+								{
+									"key": "",
+									"value": "false",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getGroup",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Orbis-Coordinates",
+								"value": "-51.81;-29.47",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/groups/:key",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":key"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "-LTfnOViYDomVkI9ibC4"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "updateGroup",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n        \"name\": \"new name\",\n\n\"location\": {\"latitude\": -45, \"longitude\": 45},\n\n    \"description\": \"waaaay toooo long description for such a mundane thing as a online social network group. maybe it should be shorter? MVAHAHAHA. Still not enough?\",\n    \"imageName\": \"some image\",\n    \"colorIndex\": 234,\n    \"solidColorHex\": \"#bbb\",\n    \"strokeColorHex\": \"#12c4b3\",\n    \"os\": \"ANDROID\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/groups/:key",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":key"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "60d4d053fe8b961e70a520d1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "deleteGroup",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/:key",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":key"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "6090f1f2512f283a7df5f5e5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "addGroup Copy",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Astartes4\",\n  \"location\": {\n    \"longitude\": -53,\n    \"latitude\": -21\n  },\n  \"description\": \"Some lengthy group description to make validation happy. It's also a fun group to go places and conquer them in the name of EMPEROR! 140 characters are quite long indeed.\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/groups",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups"
+							],
+							"query": [
+								{
+									"key": "",
+									"value": "false",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "share group",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/:groupKey/share",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":groupKey",
+								"share"
+							],
+							"variable": [
+								{
+									"key": "groupKey",
+									"value": "6138ab6db918686c016dfda1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "report group",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "some reason"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/groups/:groupKey/report",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":groupKey",
+								"report"
+							],
+							"variable": [
+								{
+									"key": "groupKey",
+									"value": "6138ab6db918686c016dfda1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "places",
+			"item": [
+				{
+					"name": "getPlace",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/places/:key",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"places",
+								":key"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "60a8c8b05078ef330a73b955"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "createPlace",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"coordinates\": {\n        \"latitude\": -29.4717330932617,\n        \"longitude\": -51.8161888122559\n    },\n\n    \"userCoordinates\": {\n        \"longitude\": 20,\n            \"latitude\": 30\n    },\n\n    \"groupCreatedKey\": \"-M3CuPxNXrSlqESb4Trd\",\n    \"name\": \"New place 3\",\n    \"type\": \"HOUSE\",\n    \"address\": \"\",\n    \"imageName\": \"some_image.jpg\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/places",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"places"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getPlaces",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/places?latitude=-29.47&longitude=-51.81&size=20&distance=50",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"places"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "size",
+									"value": "50",
+									"disabled": true
+								},
+								{
+									"key": "name",
+									"value": "gas station",
+									"disabled": true
+								},
+								{
+									"key": "ownedByGroupKey",
+									"value": "-MW7SR1_0kFgkG15TvXD",
+									"disabled": true
+								},
+								{
+									"key": "latitude",
+									"value": "-29.47"
+								},
+								{
+									"key": "longitude",
+									"value": "-51.81"
+								},
+								{
+									"key": "size",
+									"value": "20"
+								},
+								{
+									"key": "distance",
+									"value": "50"
+								},
+								{
+									"key": "name",
+									"value": "pplkk",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getPlacesMap",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/places/map?latitude=-29.4748306274414&longitude=-51.8157119750977&page=0&size=250&distance=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"places",
+								"map"
+							],
+							"query": [
+								{
+									"key": "latitude",
+									"value": "-29.4748306274414"
+								},
+								{
+									"key": "longitude",
+									"value": "-51.8157119750977"
+								},
+								{
+									"key": "page",
+									"value": "0"
+								},
+								{
+									"key": "size",
+									"value": "250"
+								},
+								{
+									"key": "distance",
+									"value": "20"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "updatePlace",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"imageName\": \"another_image.jpg\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/places/:key",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"places",
+								":key"
+							],
+							"query": [
+								{
+									"key": null,
+									"value": "some_arbitrary_key",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "60c9aa3d218ea66f7fde0ec3"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "posts",
+			"item": [
+				{
+					"name": "getPost",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:key",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":key"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "6130811a9bb04c4f3e1ecd07"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "reportPost",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "That's offensive!"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts/:key/report",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":key",
+								"report"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "61349da2fe06f461337974c9"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getStories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/stories?groupKeys=60acb498a96d4c6fe7a1da48,60afc6833435643ee5fce501,60a838edff33394c081e92f6&limitPerGroup=5&postTypes=VIDEO,IMAGE",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"stories"
+							],
+							"query": [
+								{
+									"key": "groupKeys",
+									"value": "60acb498a96d4c6fe7a1da48,60afc6833435643ee5fce501,60a838edff33394c081e92f6"
+								},
+								{
+									"key": "limitPerGroup",
+									"value": "5"
+								},
+								{
+									"key": "postTypes",
+									"value": "VIDEO,IMAGE"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "createPost",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n        \"coordinates\": {\n            \"longitude\": -12,\n            \"latitude\": 30\n        },\n    \n    \"type\": \"EVENT\",\n    \"mediaUrls\": [\n        \"1931B6F7-C2B1-4864-B73C-5D0B096039CA.jpeg\"\n    ],\n    \n    \"plannedTime\": \"2021-09-18T11:00:00Z\",\n    \"plannedEndTime\": \"2021-09-18T12:00:00Z\",\n    \"title\": \"Some very offensive title\",\n    \"details\": \"Some repulsive and disgusting activity\",\n    \"groupKey\": \"-LTfnOViYDomVkI9ibC4\",\n    \"placeKey\": \"-LTfocr9hCSsMG7c5GK9\",\n    \"address\": \"Some address\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "updatePost",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n        \"coordinates\": {\n            \"longitude\": -12,\n            \"latitude\": 30\n        },\n    \n    \"type\": \"VIDEO\",\n    \n    \"plannedTime\": \"2021-09-18T11:00:00Z\",\n    \"plannedEndTime\": \"2021-09-19T11:00:00Z\",\n    \"title\": \"ups it was video\",\n    \"details\": \"Let's get together and drink\",\n    \n    \"groupKey\": \"-LTfnOViYDomVkI9ibC4\",\n    \"placeKey\": \"-LTfocr9hCSsMG7c5GK9\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts/:postKey",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":postKey"
+							],
+							"variable": [
+								{
+									"key": "postKey",
+									"value": "612c9955d59e1c38442c609e"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "updatePost Copy",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:postKey/share",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":postKey",
+								"share"
+							],
+							"variable": [
+								{
+									"key": "postKey",
+									"value": "612c9bbf69e4e3468acbbf9b"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "generatePosts",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/generate?groupCount=50&latitude=0&longitude=0&distance=0&periods=2&periodLength=7&count=100000",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								"generate"
+							],
+							"query": [
+								{
+									"key": "groupCount",
+									"value": "50"
+								},
+								{
+									"key": "latitude",
+									"value": "0"
+								},
+								{
+									"key": "longitude",
+									"value": "0"
+								},
+								{
+									"key": "distance",
+									"value": "0"
+								},
+								{
+									"key": "periods",
+									"value": "2"
+								},
+								{
+									"key": "periodLength",
+									"value": "7"
+								},
+								{
+									"key": "count",
+									"value": "100000"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "checkin",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"groupKey\": \"60734949436cf116a8c936ca\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/checkin/:placeKey",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"checkin",
+								":placeKey"
+							],
+							"variable": [
+								{
+									"key": "placeKey",
+									"value": "42f329d4ae3eb277bf3d8054444187fb"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "generatecheckins",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"groupKey\": \"-LUl3UwY9s5lTNyczUfj\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/checkin/generate/:placeKey?distribution=5, 5, 2, 3, 5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"checkin",
+								"generate",
+								":placeKey"
+							],
+							"query": [
+								{
+									"key": "distribution",
+									"value": "5, 5, 2, 3, 5"
+								},
+								{
+									"key": "checkins",
+									"value": "0",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "placeKey",
+									"value": "0706da57f7f81428d5a38da94dd29dd3"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "events",
+			"item": [
+				{
+					"name": "getPlace Events",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/places/:key/events",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"places",
+								":key",
+								"events"
+							],
+							"query": [
+								{
+									"key": "pastEvents",
+									"value": "true",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": ""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getGroup events",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/:key/events",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":key",
+								"events"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "-L_guaqg6kDjZ6j1hwxZ"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "feeds",
+			"item": [
+				{
+					"name": "userFeed",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/feed/user/:key?size=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"feed",
+								"user",
+								":key"
+							],
+							"query": [
+								{
+									"key": "size",
+									"value": "20"
+								}
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": ""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "test feed all (not for production)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/feed/all?from=2021-05-24T11:02:18.454Z",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"feed",
+								"all"
+							],
+							"query": [
+								{
+									"key": "from",
+									"value": "2021-05-24T11:02:18.454Z"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "placeFeed",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/feed/place/:key",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"feed",
+								"place",
+								":key"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "609a451e64adad13fad3d3e5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "groupFeed",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/feed/group/:key",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"feed",
+								"group",
+								":key"
+							],
+							"query": [
+								{
+									"key": "from",
+									"value": "2021-05-28T19:35:50.679Z",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "-LThwIz5UedyCIUZAMYX"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "nearbyFeed",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/feed/near?longitude=50.90212291411521&latitude=76.85238735647744",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"feed",
+								"near"
+							],
+							"query": [
+								{
+									"key": "longitude",
+									"value": "50.90212291411521"
+								},
+								{
+									"key": "latitude",
+									"value": "76.85238735647744"
+								},
+								{
+									"key": "from",
+									"value": "2021-05-01T09:47:58.162Z",
+									"disabled": true
+								},
+								{
+									"key": "distance",
+									"value": "50",
+									"disabled": true
+								},
+								{
+									"key": "nextPage",
+									"value": "eyJ0aW1lc3RhbXAiOiIyMDIxLTA2LTAxVDIwOjEzOjUyLjY4MFoiLCJkaXN0IjoyOTEuODg2NDY0MDYxMTcxN30=",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "newsfeed",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/feed/news",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"feed",
+								"news"
+							],
+							"query": [
+								{
+									"key": "longitude",
+									"value": "-44.946800781036444",
+									"disabled": true
+								},
+								{
+									"key": "latitude",
+									"value": "75.71678915230913",
+									"disabled": true
+								},
+								{
+									"key": "from",
+									"value": "2021-05-25T11:58:57.555Z",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "profiles",
+			"item": [
+				{
+					"name": "getMyProfile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Orbis-Coordinates",
+								"value": "-12;30",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/profile/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get users for chat",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Orbis-Coordinates",
+								"type": "text",
+								"value": "-120;-30"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    \"hZiIeeFVjEaOza95EqUU4zRSYZQ2\"\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/profile/chatusers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								"chatusers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "findProfile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile?name=bras",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile"
+							],
+							"query": [
+								{
+									"key": "name",
+									"value": "bras"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getMyProfile pictures",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/me/pictures",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								"me",
+								"pictures"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get member groups",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/:userKey/member",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								":userKey",
+								"member"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "userKey",
+									"value": "me"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getMyProfile add pictures",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"pictureUrl\": [\"whatever url\"]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/profile/me/pictures",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								"me",
+								"pictures"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getMyProfile delete picture",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/me/pictures/:pictureKey",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								"me",
+								"pictures",
+								":pictureKey"
+							],
+							"variable": [
+								{
+									"key": "pictureKey",
+									"value": ""
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getMyProfile igpictures",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/me/igpictures",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								"me",
+								"igpictures"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getMyProfile igpictures refresh",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/me/igpictures/refresh",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								"me",
+								"igpictures",
+								"refresh"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"token\", jsonData.idToken);",
+									"postman.setEnvironmentVariable(\"refreshToken\", jsonData.refreshToken);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{email}}\",\n    \"password\": \"{{password}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "change password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{email}}\",\n    \"oldPassword\": \"{{password}}\",\n    \"newPassword\": \"newPassword\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "forgot password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{email}}\",\n    \"userIp\": \"213.127.124.34\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/forgotPassword",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"forgotPassword"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "deleteMyProfile",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "signup",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = JSON.parse(responseBody);",
+									"postman.setEnvironmentVariable(\"token\", jsonData.idToken);",
+									"postman.setEnvironmentVariable(\"refreshToken\", jsonData.refreshToken);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"coordinates\": {\n        \"longitude\": 23,\n        \"latitude\": 25\n    },\n    \"pushNotificationsEnabled\": false,\n    \"displayName\": \"{{username}}\",\n    \"password\": \"{{password}}\",\n    \"email\": \"tinedel12@tinedel.kiev.ua\",\n    \"unit\": \"KM\",\n    \"language\": \"en-US\",\n    \"dateOfBirth\": \"03/16/1983\",\n    \"gender\": \"M\",\n    \"accountPrivate\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/signup",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"signup"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "signup Copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"asksak2@gmail.com\",\n    \"password\": \"12345678\",\n    \"username\": \"adfadfadf\",\n    \"coordinates\": {\n        \"latitude\": -1.530497820384781,\n        \"longitude\": -123.94399203783898\n    },\n    \"pushNotificationsEnabled\": false,\n    \"displayName\" : \"something\" ,\n    \"fcmToken\": \"consequat ut dolor exercitation\",\n    \"unit\": \"in voluptate nisi non\",\n    \"imageName\": \"ut laboris ullamco sed\",\n    \"placesArePublic\": true,\n    \"groupsArePublic\": false,\n    \"language\": \"aliqua nisi laboris\",\n    \"dateOfBirth\": \"incididunt do esse\",\n    \"gender\": \"fugiat ut magna\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/signup",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"signup"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "updateProfile",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"displayName\": \"Ivan Volzhev\",\n    \"unit\": \"KM\",\n    \"accountPrivate\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/profile/me",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "addFcmToken",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "crJkS0F_YDOCgpctgWLL14:APA91bHMaSYTonzJIN65R92cekRGQ_jYcoF-SkDvmELD129XJ5z1RD6yGCyw6ANsKtfgGq9bAqwK36kS-DoJRfFM7rQvqCCdE0Fobvei-R9SVy6vB3LeEUgxu6a4zG-PlfCM2m0IrVIb",
+							"options": {
+								"raw": {
+									"language": "text"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/profile/me/fcmToken",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								"me",
+								"fcmToken"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "deleteFcmToken",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "crJkS0F_YDOCgpctgWLL14:APA91bHMaSYTonzJIN65R92cekRGQ_jYcoF-SkDvmELD129XJ5z1RD6yGCyw6ANsKtfgGq9bAqwK36kS-DoJRfFM7rQvqCCdE0Fobvei-R9SVy6vB3LeEUgxu6a4zG-PlfCM2m0IrVIb",
+							"options": {
+								"raw": {
+									"language": "text"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/profile/me/fcmToken",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								"me",
+								"fcmToken"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getUserProfile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/:key",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								":key"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "x7OPg7V6HnW1q4cGq7TicZloiy72"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "refresh",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"postman.setEnvironmentVariable(\"token\", responseBody);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{{refreshToken}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/refresh",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"refresh"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "members and followers",
+			"item": [
+				{
+					"name": "becomeMember",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/:key/members",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":key",
+								"members"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "-LUSR7-yS9hq5UJ-ZbCJ"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get members",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/:key/members",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":key",
+								"members"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "60acb498a96d4c6fe7a1da48"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get admins",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/:key/admins",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":key",
+								"admins"
+							],
+							"query": [
+								{
+									"key": "size",
+									"value": "20",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "60acb498a96d4c6fe7a1da48"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "followPlace",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/places/:key/follow",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"places",
+								":key",
+								"follow"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "-LTfocr9hCSsMG7c5GK9"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "followUser",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/:key/follow",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								":key",
+								"follow"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "gtegPVY1rgQ74DyQYIPRteOOC4T2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "places followers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/places/:key/followers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"places",
+								":key",
+								"followers"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "60aa3b3b29f68b0abaf51c6e"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "following",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/:userKey/following",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								":userKey",
+								"following"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "2",
+									"disabled": true
+								},
+								{
+									"key": "type",
+									"value": "GROUP",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "userKey",
+									"value": "me"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "unfollowUser",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/:key/follow",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								":key",
+								"follow"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "x7OPg7V6HnW1q4cGq7TicZloiy72"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "unfollowPlace",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/places/:key/follow",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"places",
+								":key",
+								"follow"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "60aa3ba929f68b0abaf5250c"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "removeMember",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/:key/members",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":key",
+								"members"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "-LTi-LDBljpNdO6j2i4l"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "addAdmin",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/:key/admins/:userKey",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":key",
+								"admins",
+								":userKey"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "6090eccbed64a215328c1f38"
+								},
+								{
+									"key": "userKey",
+									"value": "OFI2QWqZYtWGxKSWlHKeOx3adaP2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "ban",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/:key/banned/:userKey",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":key",
+								"banned",
+								":userKey"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "-LTfnOViYDomVkI9ibC4"
+								},
+								{
+									"key": "userKey",
+									"value": "x7OPg7V6HnW1q4cGq7TicZloiy72"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "unban",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/:key/banned/:userKey",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":key",
+								"banned",
+								":userKey"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "-LTfnOViYDomVkI9ibC4"
+								},
+								{
+									"key": "userKey",
+									"value": "x7OPg7V6HnW1q4cGq7TicZloiy72"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "removeAdmin",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/:key/admins/:userKey",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":key",
+								"admins",
+								":userKey"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "6090eccbed64a215328c1f38"
+								},
+								{
+									"key": "userKey",
+									"value": "x7OPg7V6HnW1q4cGq7TicZloiy72"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "group followers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/:key/followers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":key",
+								"followers"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "-LTfnOViYDomVkI9ibC4"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "user followers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/:key/followers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								":key",
+								"followers"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "me"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "user followers pending",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/:key/followers/pending",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								":key",
+								"followers",
+								"pending"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "me"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "accept follow request",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/followers/:userKey/accept",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								"followers",
+								":userKey",
+								"accept"
+							],
+							"variable": [
+								{
+									"key": "userKey",
+									"value": "hZiIeeFVjEaOza95EqUU4zRSYZQ2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "remove follow request",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profile/followers/:userKey",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"profile",
+								"followers",
+								":userKey"
+							],
+							"variable": [
+								{
+									"key": "userKey",
+									"value": "hZiIeeFVjEaOza95EqUU4zRSYZQ2"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get banned",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/groups/:groupKey/banned",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"groups",
+								":groupKey",
+								"banned"
+							],
+							"variable": [
+								{
+									"key": "groupKey",
+									"value": "-LTfnOViYDomVkI9ibC4"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "ig",
+			"item": [
+				{
+					"name": "connect",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/ig/connect",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"ig",
+								"connect"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "notifications",
+			"item": [
+				{
+					"name": "get notifications",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notifications",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete notification",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/:notificationKey",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications",
+								":notificationKey"
+							],
+							"variable": [
+								{
+									"key": "notificationKey",
+									"value": "6110c63a40a6e106d65b7241"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "set seen status",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    \"6109aa58b16065008be9bae7\",\n    \"6109a997b16065008be9bae1\"\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/notifications/seen",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications",
+								"seen"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get unread notifications count",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/unreadcount",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"notifications",
+								"unreadcount"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "comments and likes",
+			"item": [
+				{
+					"name": "get comments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:key/comments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":key",
+								"comments"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "61176e23a73743113b05854c"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get comment",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:key/comments/:commentKey",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":key",
+								"comments",
+								":commentKey"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "-LTfnWqXqIJh-QZoUjPZ"
+								},
+								{
+									"key": "commentKey",
+									"value": "6127a35f32e8870dc70fe820"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete comment",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:key/comments/:commentKey",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":key",
+								"comments",
+								":commentKey"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "-LTfnWqXqIJh-QZoUjPZ"
+								},
+								{
+									"key": "commentKey",
+									"value": "61176e50a73743113b058595"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "like comment",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:key/comments/:commentKey/like",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":key",
+								"comments",
+								":commentKey",
+								"like"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "-LTfnWqXqIJh-QZoUjPZ"
+								},
+								{
+									"key": "commentKey",
+									"value": "6127a35f32e8870dc70fe820"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "unlike comment",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:key/comments/:commentKey/like",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":key",
+								"comments",
+								":commentKey",
+								"like"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "-LTfnWqXqIJh-QZoUjPZ"
+								},
+								{
+									"key": "commentKey",
+									"value": "611ca4356a01eb457327ac48"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "edit comment",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"text\": \"some much more sophisticated and snappy responce\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts/:key/comments/:commentKey",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":key",
+								"comments",
+								":commentKey"
+							],
+							"variable": [
+								{
+									"key": "key",
+									"value": "-LTfnWqXqIJh-QZoUjPZ"
+								},
+								{
+									"key": "commentKey",
+									"value": "610eba721114d44c4445badb"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "post comment",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"text\": \"Hi there to you too\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/posts/:postKey/comments",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":postKey",
+								"comments"
+							],
+							"variable": [
+								{
+									"key": "postKey",
+									"value": "609e8abb38332978f3bc6895"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "like post",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:postKey/like",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":postKey",
+								"like"
+							],
+							"variable": [
+								{
+									"key": "postKey",
+									"value": "609e8abb38332978f3bc6895"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "unlike post",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/posts/:postKey/like",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"posts",
+								":postKey",
+								"like"
+							],
+							"variable": [
+								{
+									"key": "postKey",
+									"value": "61176e23a73743113b05854c"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "stories",
+			"item": [
+				{
+					"name": "nearbyStories",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/feed/near/stories?longitude=50.90212291411521&latitude=76.85238735647744&size=20&page=0",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"feed",
+								"near",
+								"stories"
+							],
+							"query": [
+								{
+									"key": "longitude",
+									"value": "50.90212291411521"
+								},
+								{
+									"key": "latitude",
+									"value": "76.85238735647744"
+								},
+								{
+									"key": "from",
+									"value": "2021-05-01T09:47:58.162Z",
+									"disabled": true
+								},
+								{
+									"key": "size",
+									"value": "20"
+								},
+								{
+									"key": "page",
+									"value": "0"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "news stories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/feed/news/stories",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"feed",
+								"news",
+								"stories"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "story seen",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/feed/stories/:postKey/seen",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"feed",
+								"stories",
+								":postKey",
+								"seen"
+							],
+							"variable": [
+								{
+									"key": "postKey",
+									"value": "609e8abb38332978f3bc6895"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "events",
+			"item": [
+				{
+					"name": "attendees",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/events/:postKey/attendees",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"events",
+								":postKey",
+								"attendees"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "size",
+									"value": "20",
+									"disabled": true
+								}
+							],
+							"variable": [
+								{
+									"key": "postKey",
+									"value": "6130811a9bb04c4f3e1ecd07"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "attendees Copy",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/events/attending",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"events",
+								"attending"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "0",
+									"disabled": true
+								},
+								{
+									"key": "size",
+									"value": "20",
+									"disabled": true
+								},
+								{
+									"key": "pastEvents",
+									"value": "true",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "attend",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/events/:postKey/attend",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"events",
+								":postKey",
+								"attend"
+							],
+							"variable": [
+								{
+									"key": "postKey",
+									"value": "6130811a9bb04c4f3e1ecd07"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "not attend",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/events/:postKey/attend",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"events",
+								":postKey",
+								"attend"
+							],
+							"variable": [
+								{
+									"key": "postKey",
+									"value": "6130811a9bb04c4f3e1ecd07"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "sign url",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": ""
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

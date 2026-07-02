@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "outDir": "lib",
+    "target": "es2018",
+    "module": "commonjs",
+    "noImplicitReturns": true,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "strictNullChecks": false,
+    "sourceMap": true,
+    "strict": true,
+  },
+  "include": ["src"]
+}

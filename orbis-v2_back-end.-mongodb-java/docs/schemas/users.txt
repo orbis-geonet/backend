@@ -1,0 +1,169 @@
+| key                      | types                       | occurrences | percents              |
+| ------------------------ | --------------------------- | ----------- | --------------------- |
++| _id                      | ObjectId                    |        6794 | 100.00000000000000000 |
++| pushNotificationsEnabled | Boolean                     |        6793 |  99.98528113040919152 |
++| userId                   | String                      |        6793 |  99.98528113040919152 | -> uid or userId -> userKey
++| flavor                   | String                      |        6792 |  99.97056226081836883 |
++| superAdmin               | Boolean                     |        6792 |  99.97056226081836883 |
+-| uid                      | String                      |        6792 |  99.97056226081836883 |
++| username                 | String                      |        6792 |  99.97056226081836883 |
++| deleted                  | Boolean                     |        6786 |  99.88224904327347531 |
++| fcmToken                 | String                      |        6669 |  98.16014130114807301 |
++| coordinates              | Object                      |        6485 |  95.45186929643803353 | -> geoJson
+| coordinates.latitude     | Number                      |        6485 |  95.45186929643803353 |
+| coordinates.longitude    | Number                      |        6485 |  95.45186929643803353 |
+| geohash                  | String                      |        6485 |  95.45186929643803353 |
++| email                    | String                      |        6424 |  94.55401825139828986 |
++| timestamp                | NumberLong                  |        5975 |  87.94524580512216971 |
++| activeServerTimestamp    | NumberLong                  |        5877 |  86.50279658522225645 |
++| providerImageUrl         | String                      |        3611 |  53.14983809243449997 |
++| activeGroupId            | String                      |        3604 |  53.04680600529879086 | -> activeGroupKey
++| unit                     | String                      |        2904 |  42.74359729172799405 | -> MILES, KM, null
+| checkIn                  | Object                      |         796 |  11.71622019428907890 |
++| checkIn.duplicated       | Boolean                     |         796 |  11.71622019428907890 |
++| checkIn.eventType        | String                      |         796 |  11.71622019428907890 |
++| checkIn.groupKey         | String                      |         796 |  11.71622019428907890 |
++| checkIn.key              | String                      |         796 |  11.71622019428907890 |
++| checkIn.placeKey         | String                      |         796 |  11.71622019428907890 |
++| checkIn.userKey          | String                      |         796 |  11.71622019428907890 |
++| checkIn.valid            | Boolean                     |         796 |  11.71622019428907890 |
++| checkIn.validTimestamp   | NumberLong                  |         796 |  11.71622019428907890 | -> Date
++| imageName                | String                      |         379 |   5.57845157491904597 |
++| checkIn.invalidTimestamp | NumberLong (282),Number (3) |         285 |   4.19487783338239595 | -> Date
++| placesArePublic          | Boolean                     |         200 |   2.94377391816308487 |
++| groupsArePublic          | Boolean                     |         197 |   2.89961730939063900 |
++| language                 | String                      |          73 |   1.07447748012952604 |
++| checkIn.timestamp        | NumberLong                  |           5 |   0.07359434795407713 | -> Date
++| dateOfBirth              | NumberLong                  |           5 |   0.07359434795407713 | -> Date
++| gender                   | String                      |           5 |   0.07359434795407713 | -> MALE, FEMALE, null
++| vkId                     | String                      |           5 |   0.07359434795407713 |
++| emailInVk                | String                      |           4 |   0.05887547836326170 |
++----------------------------------------------------------------------------------------------+
+db.getCollection('users').aggregate([
+    {
+        $addFields : {
+            "geometry" : {
+                "type" : "Point",
+                "coordinates" : [
+                    "$coordinates.longitude",
+                    "$coordinates.latitude"
+                ]
+            }
+        }
+    },
+    {
+        $project : {
+            "userKey" : {
+                "$ifNull" : [
+                    "$userId",
+                    "$uid"
+                ]
+            },
+            "coordinates" : "$geometry",
+            "pushNotificationsEnabled": 1, 
+            "flavor": 1,
+            "superAdmin": 1, 
+            "username": 1, 
+            "deleted": 1, 
+            "fcmToken": 1, 
+            "email": 1, 
+            "timestamp": { $ifNull: [{ $toDate: { $toLong: "$timestamp"}}, "$$REMOVE"]},
+            "activeServerTimestamp": { $ifNull: [{ $toDate: { $toLong: "$activeServerTimestamp"}}, "$$REMOVE"]},
+            "providerImageUrl": 1, 
+            "activeGroupKey": "$activeGroupId",
+            "unit": 1,
+            "checkIn" : {
+                "duplicated": 1,
+                "eventType": 1,
+                "groupKey": 1,
+                "key": 1,
+                "placeKey": 1,
+                "userKey": 1,
+                "valid": 1,
+                "validTimestamp": { $ifNull: [{ $toDate: { $toLong: "$checkIn.validTimestamp"}}, "$$REMOVE"]},
+                "invalidTimestamp": { $ifNull: [{ $toDate: { $toLong: "$checkIn.invalidTimestamp"}}, "$$REMOVE"]}, // Date
+                "timestamp": { $ifNull: [{ $toDate: { $toLong: "$checkIn.timestamp"}}, "$$REMOVE"]}
+            },
+            "imageName": 1, 
+            "placesArePublic": 1, 
+            "groupsArePublic": 1, 
+            "language": 1, 
+            "dateOfBirth": { $ifNull: [{ $toDate: { $toLong: "$dateOfBirth"}}, "$$REMOVE"]},
+            "gender": 1,
+            "vkId": 1, 
+            "emailInVk": 1, 
+        }
+    },
+    {
+        $addFields: {
+            "checkIn": {
+                $cond: [
+                  {$eq: [0, {$size: {$objectToArray: "$checkIn"}}]},
+                  "$$REMOVE",
+                  "$checkIn"
+                ]
+            }
+        }
+    },
+    {
+        $out : {
+            "db" : "orbis-converted",
+            "coll" : "users"
+        }
+    }
+]);
+converted:
++---------------------------------------------------------------------------+
+| key                      | types    | occurrences | percents              |
+| ------------------------ | -------- | ----------- | --------------------- |
+| _id                      | ObjectId |        6794 | 100.00000000000000000 |
+| coordinates              | Object   |        6794 | 100.00000000000000000 |
+| coordinates.coordinates  | Array    |        6794 | 100.00000000000000000 |
+| coordinates.type         | String   |        6794 | 100.00000000000000000 |
+| userKey                  | String   |        6794 | 100.00000000000000000 |
+| pushNotificationsEnabled | Boolean  |        6793 |  99.98528113040919152 |
+| flavor                   | String   |        6792 |  99.97056226081836883 |
+| superAdmin               | Boolean  |        6792 |  99.97056226081836883 |
+| username                 | String   |        6792 |  99.97056226081836883 |
+| deleted                  | Boolean  |        6786 |  99.88224904327347531 |
+| fcmToken                 | String   |        6669 |  98.16014130114807301 |
+| email                    | String   |        6424 |  94.55401825139828986 |
+| timestamp                | Date     |        5975 |  87.94524580512216971 |
+| activeServerTimestamp    | Date     |        5877 |  86.50279658522225645 |
+| providerImageUrl         | String   |        3611 |  53.14983809243449997 |
+| activeGroupKey           | String   |        3604 |  53.04680600529879086 |
+| unit                     | String   |        2904 |  42.74359729172799405 |
+| checkIn                  | Object   |         796 |  11.71622019428907890 |
+| checkIn.duplicated       | Boolean  |         796 |  11.71622019428907890 |
+| checkIn.eventType        | String   |         796 |  11.71622019428907890 |
+| checkIn.groupKey         | String   |         796 |  11.71622019428907890 |
+| checkIn.key              | String   |         796 |  11.71622019428907890 |
+| checkIn.placeKey         | String   |         796 |  11.71622019428907890 |
+| checkIn.userKey          | String   |         796 |  11.71622019428907890 |
+| checkIn.valid            | Boolean  |         796 |  11.71622019428907890 |
+| checkIn.validTimestamp   | Date     |         796 |  11.71622019428907890 |
+| imageName                | String   |         379 |   5.57845157491904597 |
+| checkIn.invalidTimestamp | Date     |         285 |   4.19487783338239595 |
+| placesArePublic          | Boolean  |         200 |   2.94377391816308487 |
+| groupsArePublic          | Boolean  |         197 |   2.89961730939063900 |
+| language                 | String   |          73 |   1.07447748012952604 |
+| checkIn.timestamp        | Date     |           5 |   0.07359434795407713 |
+| dateOfBirth              | Date     |           5 |   0.07359434795407713 |
+| gender                   | String   |           5 |   0.07359434795407713 |
+| vkId                     | String   |           5 |   0.07359434795407713 |
+| emailInVk                | String   |           4 |   0.05887547836326170 |
++---------------------------------------------------------------------------+
+
+// useful queries
+// remove duplicates
+db.users.aggregate([
+    { "$group": {
+        "_id": "$username",
+        "dups": { "$push": "$_id" },
+        "count": { "$sum": 1 }
+    }},
+    { "$match": { "count": { "$gt": 1 } }}
+]).forEach(function(doc) {
+    doc.dups.shift();
+    db.users.remove({ "_id": {"$in": doc.dups }});
+});

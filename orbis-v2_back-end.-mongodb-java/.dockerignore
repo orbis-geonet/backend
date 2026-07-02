@@ -1,0 +1,38 @@
+# Build outputs (rebuilt inside the container)
+build/
+.gradle/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Git
+.git/
+.gitignore
+
+# Firebase credentials — mounted at runtime, never baked into the image
+firebase/
+
+# Local env
+*.env
+.env*
+local.properties
+
+# Logs / runtime artefacts
+app.log
+app.pid
+
+# The resizerfunc Node sub-project is not part of the Java build
+resizerfunc/
+
+# Docs and test HTML assets (not needed at runtime)
+docs/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Docker files themselves
+Dockerfile
+docker-compose*.yml

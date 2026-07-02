@@ -1,0 +1,13 @@
+[workspace]
+members = ["programs/*"]
+resolver = "2"
+
+[workspace.dependencies]
+anchor-lang = { version = "1.0.0", features = ["init-if-needed"] }
+anchor-spl = { version = "1.0.0" }
+
+[profile.release]
+opt-level = "z"
+lto = "thin"
+codegen-units = 1
+overflow-checks = true

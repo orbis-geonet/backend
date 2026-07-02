@@ -1,0 +1,122 @@
+legacy:
++---------------------------------------------------------------------------------------------------+
+| key                     | types                          | occurrences | percents                 |
+| ----------------------- | ------------------------------ | ----------- | ------------------------ |
++| _id                     | ObjectId                       |     1400267 | 100.00000000000000000000 |
++| coordinates             | Object                         |     1400267 | 100.00000000000000000000 |
++| coordinates.latitude    | Number                         |     1400267 | 100.00000000000000000000 |
++| coordinates.longitude   | Number                         |     1400267 | 100.00000000000000000000 |
+-| geohash                 | String                         |     1400267 | 100.00000000000000000000 |
++| key                     | String                         |     1400267 | 100.00000000000000000000 | -> placeKey
++| name                    | String                         |     1400267 | 100.00000000000000000000 |
++| type                    | String                         |     1400267 | 100.00000000000000000000 |
++| userCreatedKey          | String                         |     1400267 | 100.00000000000000000000 |
+-| placeId                 | String                         |     1400266 |  99.99992858504842274669 |
++| lowercaseName           | String                         |     1399938 |  99.97650448093114050607 |
++| source                  | String                         |     1398452 |  99.87038186288758367937 |
++| address                 | String                         |     1398361 |  99.86388310229406783947 |
++| description             | String                         |     1397559 |  99.80660831112923858655 |
++| categoryKey             | String                         |     1397310 |  99.78882598818654514616 |
++| cityKey                 | String                         |     1397307 |  99.78861174333181338625 |
+-| cityPlusCategoryKey2    | Number                         |     1397307 |  99.78861174333181338625 |
++| countryKey              | String                         |     1397307 |  99.78861174333181338625 |
++| csvHash                 | String                         |     1397307 |  99.78861174333181338625 |
++| csvUrl                  | String                         |     1397307 |  99.78861174333181338625 |
++| phone                   | String                         |     1397307 |  99.78861174333181338625 |
++| lastCheckInTimestamp    | NumberLong (3220),Number (487) |        3707 |   0.26473522549628036860 |
++| dominantGroupKey        | String                         |        3216 |   0.22967048427192812698 |
++| deleted                 | Boolean                        |        2960 |   0.21138825666819255344 |
++| temporary               | Boolean                        |        2960 |   0.21138825666819255344 |
++| wasTemporary            | Boolean                        |        2960 |   0.21138825666819255344 |
++| creationServerTimestamp | NumberLong                     |        2285 |   0.16318316435365540218 |
++| timestamp               | NumberLong                     |        2285 |   0.16318316435365540218 |
++| groupCreatedKey         | String                         |        1642 |   0.11726335048958519414 |
++| googlePlaceId           | String                         |         985 |   0.07034372730343570190 |
+-| cagtegoryKey            | String                         |           1 |   0.00007141495157709208 |
++---------------------------------------------------------------------------------------------------+
+conversion query:
+db.getCollection('places').aggregate([
+    {
+        $addFields : {
+            "geometry" : {
+                "type" : "Point",
+                "coordinates" : [
+                    "$coordinates.longitude",
+                    "$coordinates.latitude"
+                ]
+            }
+        }
+    },
+    {
+        $project : {
+            "placeKey" : {
+                "$ifNull" : [
+                    "$placeId",
+                    "$key"
+                ]
+            },
+            "timestamp" : { $toDate: { $toLong: "$timestamp"}},
+            "creationServerTimestamp" : { $toDate: { $toLong: "$creationServerTimestamp"}},
+            "coordinates" : "$geometry",
+            "deleted" : 1,
+            "googlePlaceId" : 1,
+            "name" : 1,
+            "lowercaseName" : 1,
+            "address" : 1,
+            "type" : 1,
+            "dominantGroupKey" : 1,
+            "wasTemporary" : 1,
+            "lastCheckInTimestamp" : { $toDate: { $toLong: "$lastCheckInTimestamp"}},
+            "source" : 1,
+            "temporary" : 1,
+            "userCreatedKey" : 1,
+            "description": 1,
+            "categoryKey": 1,
+            "cityKey": 1,
+            "countryKey": 1,
+            "csvHash": 1,
+            "csvUrl": 1,
+            "phone": 1,
+            "groupCreatedKey": 1
+        }
+    },
+    {
+        $out : {
+            "db" : "orbis-converted",
+            "coll" : "places"
+        }
+    }
+]);
+
+converted:
++------------------------------------------------------------------------------------------------+
+| key                     | types                          | occurrences | percents              |
+| ----------------------- | ------------------------------ | ----------- | --------------------- |
+| _id                     | ObjectId                       |     1400267 | 100.00000000000000000 |
+| coordinates             | Object                         |     1400267 | 100.00000000000000000 |
+| coordinates.coordinates | Array                          |     1400267 | 100.00000000000000000 |
+| coordinates.type        | String                         |     1400267 | 100.00000000000000000 |
+| name                    | String                         |     1400267 | 100.00000000000000000 |
+| placeKey                | Object                         |     1400267 | 100.00000000000000000 |
+| type                    | String                         |     1400267 | 100.00000000000000000 |
+| userCreatedKey          | String                         |     1400267 | 100.00000000000000000 |
+| lowercaseName           | String                         |     1399938 |  99.97650448093114051 |
+| source                  | String                         |     1398452 |  99.87038186288758368 |
+| address                 | String                         |     1398361 |  99.86388310229406784 |
+| description             | String                         |     1397559 |  99.80660831112923859 |
+| categoryKey             | String                         |     1397310 |  99.78882598818654515 |
+| cityKey                 | String                         |     1397307 |  99.78861174333181339 |
+| countryKey              | String                         |     1397307 |  99.78861174333181339 |
+| csvHash                 | String                         |     1397307 |  99.78861174333181339 |
+| csvUrl                  | String                         |     1397307 |  99.78861174333181339 |
+| phone                   | String                         |     1397307 |  99.78861174333181339 |
+| lastCheckInTimestamp    | Date                           |        3707 |   0.26473522549628037 |
+| dominantGroupKey        | String                         |        3216 |   0.22967048427192813 |
+| deleted                 | Boolean                        |        2960 |   0.21138825666819255 |
+| temporary               | Boolean                        |        2960 |   0.21138825666819255 |
+| wasTemporary            | Boolean                        |        2960 |   0.21138825666819255 |
+| creationServerTimestamp | Date                           |        2285 |   0.16318316435365540 |
+| timestamp               | Date                           |        2285 |   0.16318316435365540 |
+| groupCreatedKey         | String                         |        1642 |   0.11726335048958519 |
+| googlePlaceId           | String                         |         985 |   0.07034372730343570 |
++------------------------------------------------------------------------------------------------+

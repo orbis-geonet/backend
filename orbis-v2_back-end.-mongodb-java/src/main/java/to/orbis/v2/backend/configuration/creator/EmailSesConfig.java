@@ -1,0 +1,40 @@
+package to.orbis.v2.backend.configuration.creator;
+
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.services.simpleemail.AmazonSimpleEmailService;
+import com.amazonaws.services.simpleemail.AmazonSimpleEmailServiceClientBuilder;
+import io.awspring.cloud.ses.SimpleEmailServiceJavaMailSender;
+import io.awspring.cloud.ses.SimpleEmailServiceMailSender;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.mail.MailSender;
+import org.springframework.mail.javamail.JavaMailSender;
+
+@Configuration
+public class EmailSesConfig {
+
+    @Bean
+    public AmazonSimpleEmailService amazonSimpleEmailService(
+            @Value("${cloud.aws.credentials.access-key}") String accessKey,
+            @Value("${cloud.aws.credentials.secret-key}") String secretKey,
+            @Value("${cloud.aws.region.static}") String region
+    ) {
+        BasicAWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
+        return AmazonSimpleEmailServiceClientBuilder.standard()
+                .withCredentials(new AWSStaticCredentialsProvider(credentials))
+                .withRegion(region)
+                .build();
+    }
+
+    @Bean
+    public MailSender mailSender(AmazonSimpleEmailService amazonSimpleEmailService) {
+        return new SimpleEmailServiceMailSender(amazonSimpleEmailService);
+    }
+
+    @Bean
+    public JavaMailSender javaMailSender(AmazonSimpleEmailService amazonSimpleEmailService) {
+        return new SimpleEmailServiceJavaMailSender(amazonSimpleEmailService);
+    }
+}

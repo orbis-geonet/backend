@@ -1,0 +1,156 @@
+buildscript {    // Configuration for building
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.google.cloud.tools:appengine-gradle-plugin:2.8.1' // If a newer version is available, use it
+    }
+}
+
+plugins {
+    id 'org.springframework.boot' version '2.5.5'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'java'
+    id 'com.google.cloud.tools.appengine-appyaml' version '2.8.1'
+}
+
+group = 'to.orbis.v2'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '17'
+targetCompatibility = '17'
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {   // repositories for Jar's you access in your code
+//    maven {
+//        url 'https://oss.sonatype.org/content/repositories/snapshots' // SNAPSHOT repository (if needed)
+//    }
+    maven {
+        url "https://repo.osgeo.org/repository/release"
+    }
+    mavenCentral()
+}
+
+dependencies {
+    constraints {
+        implementation("org.apache.logging.log4j:log4j-core") {
+            version {
+                strictly("[2.17, 3[")
+                prefer("2.17.0")
+            }
+            because("CVE-2021-44228, CVE-2021-45046, CVE-2021-45105: Log4j vulnerable to remote code execution and other critical security vulnerabilities")
+        }
+    }
+
+    implementation 'org.springframework.boot:spring-boot-starter-data-mongodb-reactive'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.security:spring-security-oauth2-jose'
+    implementation 'org.springframework.security:spring-security-oauth2-resource-server'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-mail:1.2.0.RELEASE'
+    implementation 'org.mapstruct:mapstruct:1.4.2.Final'
+    implementation 'com.google.firebase:firebase-admin:8.1.0'
+    implementation 'com.github.spullara.mustache.java:compiler:0.9.10'
+
+    implementation 'com.google.maps:google-maps-services:1.0.1'
+    implementation 'com.google.code.geocoder-java:geocoder-java:0.16'
+    implementation 'io.micrometer:micrometer-registry-prometheus:1.8.1'
+
+    // implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+    implementation 'org.geotools:gt-referencing:25.0'
+    implementation 'org.geotools:gt-epsg-hsql:25.0'
+    implementation 'org.geotools:gt-epsg-extension:25.0'
+    implementation 'com.github.davidmoten:geo:0.8.0'
+
+    implementation 'com.stripe:stripe-java:21.0.0'
+    implementation 'io.awspring.cloud:spring-cloud-starter-aws-ses:2.4.4'
+
+    implementation 'org.locationtech.jts:jts-core:1.18.1'
+
+    implementation 'com.google.api-client:google-api-client:1.32.2'
+    implementation 'org.springdoc:springdoc-openapi-webflux-ui:1.6.3'
+    implementation 'org.springdoc:springdoc-openapi-security:1.6.3'
+    implementation 'com.google.appengine:appengine-api-1.0-sdk:2.0.1'
+    compileOnly 'org.projectlombok:lombok:1.18.22'
+
+    annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.4.2.Final'
+    annotationProcessor 'org.projectlombok:lombok:1.18.22'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'de.flapdoodle.embed:de.flapdoodle.embed.mongo'
+    testImplementation 'io.projectreactor:reactor-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testCompileOnly 'org.projectlombok:lombok:1.18.22'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.22'
+}
+
+appengineDeploy.dependsOn test
+appengineStage.dependsOn test
+
+tasks.register("prod.config", Copy) {
+    from "src/main/appengine/app-prod.yaml"
+    into "src/main/appengine"
+    rename '(.+)-prod(.+)', '$1$2'
+}
+
+tasks.register("staging.config", Copy) {
+    from "src/main/appengine/app-staging.yaml"
+    into "src/main/appengine"
+    rename '(.+)-staging(.+)', '$1$2'
+}
+
+tasks.register("prod.select", Exec) {
+        commandLine 'gcloud', 'config', 'set', 'project', 'orbisv2-production'
+}
+
+tasks.register("staging.select", Exec) {
+        commandLine 'gcloud', 'config', 'set', 'project', 'orbisv2-production'
+}
+
+tasks.register("deployProd") {
+    dependsOn ordered("prod.config", "prod.select", "appengineDeploy")
+}
+
+tasks.register("deployStaging") {
+    dependsOn ordered("staging.config", "staging.select", "appengineDeploy")
+}
+
+def ordered(String... dependencyPaths) {
+    def dependencies = dependencyPaths.collect { tasks.getByPath(it) }
+    for (int i = 0; i < dependencies.size() - 1; i++) {
+        dependencies[i + 1].mustRunAfter(dependencies[i])
+    }
+    return dependencies
+}
+
+appengine {  // App Engine tasks configuration
+    stage {
+        artifact = 'build/libs/orbisv2-backend-0.0.1-SNAPSHOT.jar'
+    }
+    deploy {   // deploy configuration
+        projectId = 'GCLOUD_CONFIG'
+        version = '2'
+    }
+}
+
+test {
+    environment = [
+            "GOOGLE_APPLICATION_CREDENTIALS": "../orbis-v2-firebase-adminsdk-jtef9-4bcf128ec4.json",
+            "SPRING_PROFILES_ACTIVE": "staging"
+    ]
+    useJUnitPlatform()
+}
+
+bootRun {
+    environment "GOOGLE_APPLICATION_CREDENTIALS", "../orbis-v2-firebase-adminsdk-jtef9-4bcf128ec4.json"
+}
+

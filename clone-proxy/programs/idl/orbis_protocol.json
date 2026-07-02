@@ -1,0 +1,1836 @@
+{
+  "address": "x2HARL2kBx2jVHtgWvf8sX8zbZ3sBAvtHJeg8AgosqR",
+  "metadata": {
+    "name": "orbis_protocol",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "claim_streaming_payment",
+      "discriminator": [
+        128,
+        1,
+        197,
+        234,
+        186,
+        127,
+        42,
+        37
+      ],
+      "accounts": [
+        {
+          "name": "requester"
+        },
+        {
+          "name": "streaming_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  101,
+                  97,
+                  109,
+                  105,
+                  110,
+                  103,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "requester"
+              },
+              {
+                "kind": "account",
+                "path": "provider"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "streaming_escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "requester_clone_info",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  111,
+                  110,
+                  101,
+                  95,
+                  105,
+                  110,
+                  102,
+                  111
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "requester"
+              }
+            ]
+          }
+        },
+        {
+          "name": "provider_clone_info",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  111,
+                  110,
+                  101,
+                  95,
+                  105,
+                  110,
+                  102,
+                  111
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "provider"
+              }
+            ]
+          }
+        },
+        {
+          "name": "provider",
+          "signer": true
+        },
+        {
+          "name": "provider_token_account",
+          "writable": true
+        },
+        {
+          "name": "treasury_token_account",
+          "writable": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "instructions_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "data_size",
+          "type": "u64"
+        },
+        {
+          "name": "data_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "flag_provider",
+      "discriminator": [
+        240,
+        190,
+        152,
+        81,
+        27,
+        226,
+        244,
+        179
+      ],
+      "accounts": [
+        {
+          "name": "requester"
+        },
+        {
+          "name": "provider"
+        },
+        {
+          "name": "streaming_escrow",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  101,
+                  97,
+                  109,
+                  105,
+                  110,
+                  103,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "requester"
+              },
+              {
+                "kind": "account",
+                "path": "provider"
+              }
+            ]
+          }
+        },
+        {
+          "name": "provider_clone_info",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  111,
+                  110,
+                  101,
+                  95,
+                  105,
+                  110,
+                  102,
+                  111
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "provider"
+              }
+            ]
+          }
+        },
+        {
+          "name": "reporter",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "merkle_tree"
+        },
+        {
+          "name": "compression_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "flag_unpaid_request",
+      "discriminator": [
+        211,
+        81,
+        104,
+        86,
+        87,
+        236,
+        183,
+        38
+      ],
+      "accounts": [
+        {
+          "name": "requester",
+          "relations": [
+            "streaming_escrow"
+          ]
+        },
+        {
+          "name": "provider",
+          "signer": true,
+          "relations": [
+            "streaming_escrow"
+          ]
+        },
+        {
+          "name": "streaming_escrow",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  101,
+                  97,
+                  109,
+                  105,
+                  110,
+                  103,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "requester"
+              },
+              {
+                "kind": "account",
+                "path": "provider"
+              }
+            ]
+          }
+        },
+        {
+          "name": "requester_clone_info",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  111,
+                  110,
+                  101,
+                  95,
+                  105,
+                  110,
+                  102,
+                  111
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "requester"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "grant_genesis",
+      "discriminator": [
+        81,
+        184,
+        21,
+        71,
+        245,
+        50,
+        174,
+        188
+      ],
+      "accounts": [
+        {
+          "name": "clone_info",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  111,
+                  110,
+                  101,
+                  95,
+                  105,
+                  110,
+                  102,
+                  111
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "target_owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "target_owner"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "init_streaming_escrow",
+      "discriminator": [
+        96,
+        67,
+        212,
+        101,
+        232,
+        113,
+        76,
+        175
+      ],
+      "accounts": [
+        {
+          "name": "streaming_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  101,
+                  97,
+                  109,
+                  105,
+                  110,
+                  103,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "requester"
+              },
+              {
+                "kind": "account",
+                "path": "provider"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "streaming_escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "orbis_mint"
+        },
+        {
+          "name": "requester",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "requester_clone_info",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  111,
+                  110,
+                  101,
+                  95,
+                  105,
+                  110,
+                  102,
+                  111
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "requester"
+              }
+            ]
+          }
+        },
+        {
+          "name": "requester_token_account",
+          "writable": true
+        },
+        {
+          "name": "provider"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "merkle_tree"
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "treasury",
+          "type": "pubkey"
+        },
+        {
+          "name": "orbis_mint",
+          "type": "pubkey"
+        },
+        {
+          "name": "write_fee",
+          "type": "u64"
+        },
+        {
+          "name": "fee_per_mb",
+          "type": "u64"
+        },
+        {
+          "name": "min_fee",
+          "type": "u64"
+        },
+        {
+          "name": "registration_fee",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "register_clone",
+      "discriminator": [
+        45,
+        228,
+        196,
+        111,
+        152,
+        196,
+        201,
+        29
+      ],
+      "accounts": [
+        {
+          "name": "clone_info",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  111,
+                  110,
+                  101,
+                  95,
+                  105,
+                  110,
+                  102,
+                  111
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "signer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer_token_account",
+          "writable": true
+        },
+        {
+          "name": "treasury_token_account",
+          "writable": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "signer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "base_url",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "request_escrow_withdrawal",
+      "discriminator": [
+        16,
+        105,
+        216,
+        148,
+        200,
+        37,
+        189,
+        164
+      ],
+      "accounts": [
+        {
+          "name": "requester",
+          "signer": true,
+          "relations": [
+            "streaming_escrow"
+          ]
+        },
+        {
+          "name": "provider"
+        },
+        {
+          "name": "streaming_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  101,
+                  97,
+                  109,
+                  105,
+                  110,
+                  103,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "requester"
+              },
+              {
+                "kind": "account",
+                "path": "provider"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "streaming_escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "requester_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "revoke_genesis",
+      "discriminator": [
+        135,
+        196,
+        128,
+        228,
+        203,
+        129,
+        227,
+        224
+      ],
+      "accounts": [
+        {
+          "name": "clone_info",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  111,
+                  110,
+                  101,
+                  95,
+                  105,
+                  110,
+                  102,
+                  111
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "target_owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "target_owner"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "sync_collection_batch",
+      "discriminator": [
+        24,
+        15,
+        162,
+        167,
+        43,
+        133,
+        233,
+        143
+      ],
+      "accounts": [
+        {
+          "name": "merkle_tree",
+          "writable": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "user_token_account",
+          "writable": true
+        },
+        {
+          "name": "treasury_token_account",
+          "writable": true
+        },
+        {
+          "name": "orbis_mint"
+        },
+        {
+          "name": "clone_signer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "clone_info",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  111,
+                  110,
+                  101,
+                  95,
+                  105,
+                  110,
+                  102,
+                  111
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "clone_signer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "compression_program",
+          "address": "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK"
+        },
+        {
+          "name": "noop_program",
+          "address": "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "packet_type",
+          "type": "u8"
+        },
+        {
+          "name": "batch_id",
+          "type": "u32"
+        },
+        {
+          "name": "collection_roots",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "CollectionRoot"
+              }
+            }
+          }
+        },
+        {
+          "name": "events",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "BatchEvent"
+              }
+            }
+          }
+        },
+        {
+          "name": "batch_pointer",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "top_up_streaming_escrow",
+      "discriminator": [
+        42,
+        41,
+        180,
+        37,
+        220,
+        6,
+        23,
+        170
+      ],
+      "accounts": [
+        {
+          "name": "streaming_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  101,
+                  97,
+                  109,
+                  105,
+                  110,
+                  103,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "requester"
+              },
+              {
+                "kind": "account",
+                "path": "provider"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "streaming_escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "requester",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "streaming_escrow"
+          ]
+        },
+        {
+          "name": "requester_clone_info",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  111,
+                  110,
+                  101,
+                  95,
+                  105,
+                  110,
+                  102,
+                  111
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "requester"
+              }
+            ]
+          }
+        },
+        {
+          "name": "requester_token_account",
+          "writable": true
+        },
+        {
+          "name": "provider"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "update_clone_base_url",
+      "discriminator": [
+        84,
+        92,
+        184,
+        188,
+        252,
+        61,
+        1,
+        209
+      ],
+      "accounts": [
+        {
+          "name": "clone_info",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  111,
+                  110,
+                  101,
+                  95,
+                  105,
+                  110,
+                  102,
+                  111
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "clone_info"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_base_url",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "update_config_fees",
+      "discriminator": [
+        252,
+        5,
+        193,
+        242,
+        114,
+        161,
+        40,
+        174
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "write_fee",
+          "type": "u64"
+        },
+        {
+          "name": "fee_per_mb",
+          "type": "u64"
+        },
+        {
+          "name": "min_fee",
+          "type": "u64"
+        },
+        {
+          "name": "registration_fee",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "update_config_tree",
+      "discriminator": [
+        48,
+        181,
+        68,
+        134,
+        218,
+        171,
+        209,
+        89
+      ],
+      "accounts": [
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "new_merkle_tree",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_unused_funds",
+      "discriminator": [
+        253,
+        242,
+        142,
+        208,
+        71,
+        15,
+        207,
+        226
+      ],
+      "accounts": [
+        {
+          "name": "requester",
+          "signer": true,
+          "relations": [
+            "streaming_escrow"
+          ]
+        },
+        {
+          "name": "provider"
+        },
+        {
+          "name": "streaming_escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  114,
+                  101,
+                  97,
+                  109,
+                  105,
+                  110,
+                  103,
+                  95,
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "requester"
+              },
+              {
+                "kind": "account",
+                "path": "provider"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "streaming_escrow"
+              }
+            ]
+          }
+        },
+        {
+          "name": "requester_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "CloneInfo",
+      "discriminator": [
+        62,
+        63,
+        97,
+        177,
+        159,
+        129,
+        153,
+        243
+      ]
+    },
+    {
+      "name": "GlobalConfig",
+      "discriminator": [
+        149,
+        8,
+        156,
+        202,
+        160,
+        252,
+        176,
+        217
+      ]
+    },
+    {
+      "name": "StreamingEscrow",
+      "discriminator": [
+        158,
+        213,
+        237,
+        181,
+        209,
+        138,
+        119,
+        198
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "CollectionBatchSynced",
+      "discriminator": [
+        217,
+        142,
+        122,
+        96,
+        162,
+        1,
+        182,
+        142
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InsufficientEscrowBalance",
+      "msg": "Insufficient funds in escrow"
+    },
+    {
+      "code": 6001,
+      "name": "NoWithdrawalRequested",
+      "msg": "No withdrawal has been requested"
+    },
+    {
+      "code": 6002,
+      "name": "CoolingPeriodActive",
+      "msg": "Withdrawal is locked during cooling period"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidSignature",
+      "msg": "Invalid signature provided"
+    },
+    {
+      "code": 6004,
+      "name": "MissingSignatureVerification",
+      "msg": "Missing required Ed25519 signature verification"
+    },
+    {
+      "code": 6005,
+      "name": "LowTrustScore",
+      "msg": "Provider trust score is too low to claim payments"
+    },
+    {
+      "code": 6006,
+      "name": "ArithmeticError",
+      "msg": "Arithmetic error during fee calculation"
+    },
+    {
+      "code": 6007,
+      "name": "SelfPaymentNotAllowed",
+      "msg": "Requester and provider cannot be the same (self-payment)"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidTokenAccount",
+      "msg": "Token account has wrong owner or mint"
+    },
+    {
+      "code": 6009,
+      "name": "Unauthorized",
+      "msg": "Caller is not authorized to perform this action"
+    },
+    {
+      "code": 6010,
+      "name": "UrlTooLong",
+      "msg": "Base URL exceeds maximum allowed length"
+    },
+    {
+      "code": 6011,
+      "name": "BatchTooLarge",
+      "msg": "Batch contains too many entries"
+    }
+  ],
+  "types": [
+    {
+      "name": "BatchEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "collection_id",
+            "type": "u8"
+          },
+          {
+            "name": "action",
+            "type": "u8"
+          },
+          {
+            "name": "field_mask",
+            "type": "u8"
+          },
+          {
+            "name": "key_hash",
+            "type": {
+              "array": [
+                "u8",
+                8
+              ]
+            }
+          },
+          {
+            "name": "timestamp",
+            "type": {
+              "array": [
+                "u8",
+                4
+              ]
+            }
+          },
+          {
+            "name": "opt_data",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CloneInfo",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_url",
+            "type": "string"
+          },
+          {
+            "name": "trust_score",
+            "type": "u32"
+          },
+          {
+            "name": "total_sync_count",
+            "type": "u64"
+          },
+          {
+            "name": "flag_count",
+            "type": "u32"
+          },
+          {
+            "name": "is_genesis",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollectionBatchSynced",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "packet_type",
+            "type": "u8"
+          },
+          {
+            "name": "batch_id",
+            "type": "u32"
+          },
+          {
+            "name": "collection_roots",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "CollectionRoot"
+                }
+              }
+            }
+          },
+          {
+            "name": "events",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "BatchEvent"
+                }
+              }
+            }
+          },
+          {
+            "name": "batch_pointer",
+            "type": "string"
+          },
+          {
+            "name": "provider",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CollectionRoot",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "collection_id",
+            "type": "u8"
+          },
+          {
+            "name": "root",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "GlobalConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "orbis_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "merkle_tree",
+            "type": "pubkey"
+          },
+          {
+            "name": "write_fee",
+            "type": "u64"
+          },
+          {
+            "name": "fee_per_mb",
+            "type": "u64"
+          },
+          {
+            "name": "min_fee",
+            "type": "u64"
+          },
+          {
+            "name": "registration_fee",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StreamingEscrow",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "requester",
+            "type": "pubkey"
+          },
+          {
+            "name": "provider",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount_locked",
+            "type": "u64"
+          },
+          {
+            "name": "amount_claimed",
+            "type": "u64"
+          },
+          {
+            "name": "withdrawal_requested_at",
+            "type": "i64"
+          }
+        ]
+      }
+    }
+  ]
+}

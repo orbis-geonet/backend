@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>circle experiments</title>
+
+  <style>
+      #placeholder {
+          width: 100vw;
+      }
+
+      canvas {
+          overflow: hidden;
+          width: 75vw;
+          height: 75vh;
+          border: black 1px solid;
+          float: left;
+      }
+
+      progress {
+          width: 75vw;
+      }
+
+      button {
+          margin: 10px;
+      }
+
+      #infobox {
+          margin-left: 10px;
+          border: black 1px solid;
+          float: left;
+          width: 23vw;
+          max-height: 75vh;
+          overflow: auto;
+      }
+
+      #clearfloat {
+          clear: both;
+      }
+  </style>
+
+  <!--  <script src="login.js" defer></script>-->
+  <script src="circles.js" defer></script>
+</head>
+<body>
+<div id="placeholder">
+  <div>
+    <canvas id="cnv" onload="draw()" onresize="resize()"></canvas>
+    <div id="infobox"><pre>Log:</pre></div>
+    <div id="clearfloat"></div>
+  </div>
+  <button id="clean">Clean</button>
+  <button id="regenerate">Generate 10000 places</button>
+  <label><input type="checkbox" id="resistance" checked>Resistance</label>
+  <label><input type="checkbox" id="accumulated">Accumulated checkins</label>
+  <br/>
+  Speed<br/>
+  <progress value="0.01"></progress><br>
+  Time controls<br/>
+  <button id="stopTime">Stop Time</button>
+  <button id="startTime">Start Time</button>
+  Advance:
+  <button id="min30">30m</button>
+  <button id="h1">1h</button>
+  <button id="h2">2h</button>
+  <button id="h8">8h</button>
+  <button id="h12">12h</button>
+  <button id="h20">20h</button>
+  <button id="d30">30d</button>
+  <button id="y05">half year</button>
+  <button id="y09">3/4 year</button>
+  <br>
+  Current time: <span id="currentTime"></span><br/>
+  <label>Checkins per hour: <input id="clicks" value="0"/></label>
+  <button id="start">Start</button>
+  <button id="stop">Stop</button>
+  <br/>
+</div>
+</body>
+</html>
