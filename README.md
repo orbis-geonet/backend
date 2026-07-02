@@ -1,6 +1,6 @@
 ﻿# Orbis Backend Infrastructure
 
-Orbis is a geo-social, federated backend stack where users check in to real-world places, form groups, publish local content, and synchronize clone data through the Orbis Protocol on Solana.
+Orbis is a geo-social, federated backend stack where users claim real-world places, form tribes, publish local content, and synchronize clone data through the Orbis Protocol on Solana.
 
 This repository contains the backend services required to run an Orbis deployment or clone node.
 
