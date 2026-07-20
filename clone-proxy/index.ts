@@ -2,10 +2,10 @@ import "reflect-metadata";
 import express from "express";
 import type { NextFunction, Request, Response } from "express";
 import { MongoClient, ObjectId } from "mongodb";
-import { PORT, PROGRAM_ID, MERKLE_TREE_MINT, ORBIS_MINT, JAVA_BACKEND_URL, createConnection } from "./config.js";
+import { PORT, PROGRAM_ID, MERKLE_TREE_MINT, ORBIS_MINT, JAVA_BACKEND_URL, RPC_URL, CLONE_BASE_URL, MANIFEST_TUNABLES, SELF_CONSUME, createConnection } from "./config.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 import { getPayer } from "./blockchain/wallet.js";
-import { scanHistory, cacheToMongo, startRealtimeListener, discoverAllProviders } from "./blockchain/indexer.js";
+import { scanHistory, cacheToMongo, startRealtimeListener, discoverAllProviders, ensureNetworkIndexes } from "./blockchain/indexer.js";
 import { registerProfileRoutes } from "./routes/profile.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerGroupsRoutes } from "./routes/groups.js";
@@ -15,6 +15,8 @@ import { registerFeedRoutes } from "./routes/feed.js";
 import { registerMiscRoutes } from "./routes/misc.js";
 import { registerPolygonRoutes } from "./routes/polygon.js";
 import { registerV3Routes } from "./routes/v3.js";
+import { registerPaymentsRoutes } from "./routes/payments.js";
+import { startTribePaymentsListener, paymentsEnabled } from "./network/tribe-payment.js";
 import axios from "axios";
 import { calculateFee, startVoucherTimer } from "./network/payment.js";
 import { PublicKey } from "@solana/web3.js";
@@ -129,6 +131,60 @@ function isValidOrbisKey(token: string): boolean {
     return expectedSig === sig;
 }
 
+function onOff(on: boolean): string {
+    return on ? "ON " : "OFF";
+}
+
+function printStartupBanner(opts: {
+    payer: string;
+    port: number;
+    baseUrl: string;
+    db: string;
+    programId: string;
+    rpc: string;
+    disableBatch: boolean;
+    skipHistory: boolean;
+    register: boolean;
+    dryRun: boolean;
+    noCache: boolean;
+    autoFetch: boolean;
+    selfConsume: boolean;
+    payments: boolean;
+}) {
+    const t = MANIFEST_TUNABLES;
+    const maskUrl = (s: string) => s.replace(/([?&]api-key=)[^&]+/i, "$1***");
+    const bar = "══════════════════════════════════════════════════════════════";
+    const lines = [
+        "",
+        bar,
+        "  ORBIS CLONE PROXY — startup configuration",
+        bar,
+        "  Identity",
+        `    payer        ${opts.payer}`,
+        `    port         ${opts.port}`,
+        `    base url     ${opts.baseUrl}`,
+        `    database     ${opts.db}`,
+        `    program      ${opts.programId}`,
+        `    rpc          ${maskUrl(opts.rpc)}`,
+        "  Producer (manifest lanes)",
+        `    public       flush at ${t.publicFlushCount} entries or ${Math.round(t.publicFlushAgeMs / 1000)}s`,
+        `    derived      flush at ${t.derivedFlushCount} entries or ${Math.round(t.derivedFlushAgeMs / 1000)}s`,
+        `    check tick   ${Math.round(t.flushTickMs / 1000)}s`,
+        "  Flags",
+        `    [${onOff(!opts.disableBatch)}]  batch producer        (DISABLE_BATCH ${onOff(opts.disableBatch)})`,
+        `    [${onOff(opts.autoFetch)}]  AUTO_FETCH_EVENTS     eager committed payload fetch`,
+        `    [${onOff(opts.selfConsume)}]  SELF_CONSUME          index own manifests`,
+        `    [${onOff(!opts.noCache)}]  provider cache        (NO_CACHE ${onOff(opts.noCache)})`,
+        `    [${onOff(opts.skipHistory)}]  SKIP_HISTORY          forward-only listener`,
+        `    [${onOff(opts.register)}]  REGISTER              register clone on start`,
+        `    [${onOff(opts.dryRun)}]  DRY_RUN               validate then exit`,
+        `    [${onOff(opts.payments)}]  tribe payments        (DEVNET_* configured)`,
+        bar,
+        "",
+    ];
+    for (const l of lines) console.log(l);
+}
+
 async function main() {
     const mongoUri = process.argv[2] || process.env.MONGO_URI;
     if (!mongoUri) {
@@ -166,7 +222,26 @@ async function main() {
     const payer = await getPayer(walletPath);
 
     log.info("Starting Orbis Clone Proxy...");
-    log.info(`Payer: ${payer.publicKey.toBase58()}`);
+
+    const disableBatch = process.argv.includes("--disable-batch") || process.env.DISABLE_BATCH === "true";
+    const noCache = process.argv.includes("--no-cache") || process.env.NO_CACHE === "true";
+    const autoFetch = process.env.AUTO_FETCH_EVENTS === "true";
+    printStartupBanner({
+        payer: payer.publicKey.toBase58(),
+        port: PORT,
+        baseUrl: CLONE_BASE_URL,
+        db: dbName,
+        programId: PROGRAM_ID.toBase58(),
+        rpc: RPC_URL,
+        disableBatch,
+        skipHistory,
+        register: shouldRegister,
+        dryRun,
+        noCache,
+        autoFetch,
+        selfConsume: SELF_CONSUME,
+        payments: paymentsEnabled(),
+    });
 
     if (dryRun) {
         log.info("--- DRY RUN MODE ---");
@@ -235,7 +310,6 @@ async function main() {
             log.info("Realtime event listener active");
         }).catch((err) => log.error(`Indexer error: ${err.message}`));
     }
-    const disableBatch = process.argv.includes("--disable-batch") || process.env.DISABLE_BATCH === "true";
     if (!disableBatch) {
         startBatchPushService(db, connection, payer).catch(err => {
             if (err.message.includes("REPLICA_SET_REQUIRED")) {
@@ -249,6 +323,17 @@ async function main() {
     } else {
         log.info("Batch push service disabled by --disable-batch flag");
     }
+
+    ensureNetworkIndexes(db).catch(err => {
+        log.error(`Ensure network indexes error: ${describeError(err)}`);
+    });
+
+    if (paymentsEnabled()) {
+        startTribePaymentsListener(db);
+    } else {
+        log.info("Tribe payments disabled (set DEVNET_RPC_URL + DEVNET_PAYMENTS_PROGRAM_ID to enable)");
+    }
+
     const app = express();
     wrapExpressAsyncHandlers(app);
     app.use(express.json());
@@ -258,7 +343,13 @@ async function main() {
     });
 
     app.use(async (req, res, next) => {
-        if (req.path === "/network/status" || req.path === "/v3/api-key" || req.path === "/v3/vouchers") return next();
+        if (
+            req.path === "/network/status" ||
+            req.path === "/v3/api-key" ||
+            req.path === "/v3/vouchers" ||
+            req.path === "/debug/network-lookup" ||
+            req.path.startsWith("/v3/index-batches/")
+        ) return next();
 
         if (req.query._internal === "true") {
             /*
@@ -592,6 +683,7 @@ async function main() {
     registerFeedRoutes(app, db, payer, connection);
     registerMiscRoutes(app, db, payer, connection);
     registerPolygonRoutes(app, db, payer, connection);
+    registerPaymentsRoutes(app, db, payer, connection);
 
     app.use((err: any, req: Request, res: Response, next: NextFunction) => {
         const message = describeError(err);
@@ -600,8 +692,16 @@ async function main() {
         res.status(500).json({ error: message });
     });
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
         log.info(`Clone Proxy running on port ${PORT}`);
+    });
+    server.on("error", (err: any) => {
+        if (err?.code === "EADDRINUSE") {
+            log.error(`Port ${PORT} is already in use — is another clone already running?`);
+        } else {
+            log.error(`Server error: ${describeError(err)}`);
+        }
+        process.exit(1);
     });
 }
 

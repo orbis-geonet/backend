@@ -24,6 +24,7 @@ public class UserSubscription extends Entity {
     String subscriptionKey;
     String groupKey;
     String subscriptionStripeId;
+    String paymentRef;
     UserSubscriptionStatus status;
     String errorMessage;
     Instant startDate;

@@ -41,6 +41,7 @@ public class PostsController {
     PostMapper postMapper;
     PostService postService;
     ReactiveMongoTemplate mongoTemplate;
+    to.orbis.v2.backend.services.NetworkEventLookupService networkEventLookupService;
 
     @GetMapping("/{postKey}")
     @PreAuthorize("permitAll")
@@ -138,28 +139,6 @@ public class PostsController {
     }
 
     private Mono<String> getNetworkEventIdByKey(String key, String collectionName, boolean javaProxied) {
-        if (javaProxied || key == null) {
-            return Mono.empty();
-        }
-        String keyHash = hashKeyFull(key);
-        log.info("Hash produced: {}", keyHash);
-
-        Query query = Query.query(Criteria.where("collectionName").is(collectionName).and("status")
-                .is("pending").and("keyHash").is(keyHash))
-                .with(Sort.by(Sort.Direction.DESC, "timestamp"));
-
-        log.info("Query: {}", query);
-
-        return mongoTemplate.find(query, org.bson.Document.class, "network_events")
-                .next()
-                .map(doc -> {
-                    String id = doc.getObjectId("_id").toHexString();
-                    log.info("Found: id={}", id);
-                    return id;
-                })
-                .switchIfEmpty(Mono.defer(() -> {
-                    log.info("Not found for hash: {}", keyHash);
-                    return Mono.empty();
-                }));
+        return networkEventLookupService.byKey(collectionName, key, javaProxied);
     }
 }

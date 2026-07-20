@@ -12,7 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 import to.orbis.v2.backend.models.dto.UserSubscriptionDto;
-import to.orbis.v2.backend.models.dto.stripe.StripeSecretDto;
+import to.orbis.v2.backend.models.dto.crypto.CryptoPaymentDto;
 import to.orbis.v2.backend.services.SubscriptionsService;
 
 import java.util.ArrayList;
@@ -41,12 +41,13 @@ public class UsersSubscriptionController {
             @ApiResponse(responseCode = "400", description = "Stripe error. Cannot create payment intent.")
     })
     @Operation(description = "Subscribe", operationId = "subscribe", security = @SecurityRequirement(name = "firebase"))
-    public Mono<StripeSecretDto> subscribe(
+    public Mono<CryptoPaymentDto> subscribe(
             @PathVariable String subscriptionKey,
+            @RequestParam String payerWallet,
             Authentication authentication
     ) {
-        log.info("subscribe: subscriptionKey: {}, userKey: {}", subscriptionKey, authentication.getName());
-        return subscriptionsService.subscribe(subscriptionKey, authentication.getName());
+        log.info("subscribe: subscriptionKey: {}, userKey: {}, payerWallet: {}", subscriptionKey, authentication.getName(), payerWallet);
+        return subscriptionsService.subscribe(subscriptionKey, authentication.getName(), payerWallet);
     }
 
     @PreAuthorize("isAuthenticated")

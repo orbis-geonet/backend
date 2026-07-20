@@ -44,6 +44,7 @@ public class AuthController {
     UserMapper userMapper;
     ReactiveMongoTemplate mongoTemplate;
     ObjectMapper objectMapper;
+    to.orbis.v2.backend.services.NetworkEventLookupService networkEventLookupService;
 
     @PostMapping("/login")
     public Mono<UserDto> login(
@@ -104,20 +105,7 @@ public class AuthController {
     }
 
     private Mono<String> getNetworkEventIdByAuthorHash(String email, String collectionName, boolean javaProxied) {
-        if (javaProxied || email == null) {
-            return Mono.empty();
-        }
-        String hash = authorHashEncode(email);
-        log.info("Checking network_events for authorHash: {} (email: {})", hash, email);
-
-        Query query = Query.query(Criteria.where("collectionName").is(collectionName)
-                .and("status").is("pending")
-                .and("authorHash").is(hash))
-                .with(Sort.by(Sort.Direction.DESC, "timestamp"));
-
-        return mongoTemplate.find(query, org.bson.Document.class, "network_events")
-                .next()
-                .map(doc -> doc.getObjectId("_id").toHexString());
+        return networkEventLookupService.byAuthor(collectionName, email, javaProxied);
     }
 
     private String authorHashEncode(String email) {
@@ -139,16 +127,6 @@ public class AuthController {
     }
 
     private Mono<String> getNetworkEventIdByCollection(String collectionName, boolean javaProxied) {
-        if (javaProxied) {
-            return Mono.empty();
-        }
-        Query query = Query.query(Criteria.where("collectionName").is(collectionName).and("status")
-                .is("pending"))
-                .with(Sort.by(Sort.Direction.DESC, "timestamp"));
-
-        return mongoTemplate.find(query, org.bson.Document.class, "network_events")
-                .next()
-                .map(doc -> doc.getObjectId("_id").toHexString())
-                .switchIfEmpty(Mono.empty());
+        return networkEventLookupService.byCollection(collectionName, javaProxied);
     }
 }

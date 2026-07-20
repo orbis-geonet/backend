@@ -15,7 +15,7 @@ import reactor.core.publisher.Mono;
 import to.orbis.v2.backend.models.dto.UserPurchaseDto;
 import to.orbis.v2.backend.models.dto.UserSubscriptionDto;
 import to.orbis.v2.backend.models.dto.email.EmailType;
-import to.orbis.v2.backend.models.dto.stripe.StripeSecretDto;
+import to.orbis.v2.backend.models.dto.crypto.CryptoPaymentDto;
 import to.orbis.v2.backend.services.PurchaseService;
 import to.orbis.v2.backend.services.SubscriptionsService;
 
@@ -45,13 +45,14 @@ public class UsersPurchaseController {
             @ApiResponse(responseCode = "400", description = "Stripe error. Cannot create payment intent.")
     })
     @Operation(description = "Buy purchase", operationId = "buyPurchase", security = @SecurityRequirement(name = "firebase"))
-    public Mono<StripeSecretDto> buyPurchase(
+    public Mono<CryptoPaymentDto> buyPurchase(
             @PathVariable String purchaseKey,
             @RequestParam(defaultValue = "1") Integer number,
+            @RequestParam String payerWallet,
             Authentication authentication
     ) {
-        log.info("buy: purchaseKey: {}, userKey: {}", purchaseKey, authentication.getName());
-        return purchaseService.buyPurchase(purchaseKey, number, authentication.getName());
+        log.info("buy: purchaseKey: {}, userKey: {}, payerWallet: {}", purchaseKey, authentication.getName(), payerWallet);
+        return purchaseService.buyPurchase(purchaseKey, number, authentication.getName(), payerWallet);
     }
 
     @PreAuthorize("isAuthenticated")

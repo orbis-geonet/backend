@@ -7,4 +7,6 @@ import to.orbis.v2.backend.models.entity.UserPurchase;
 
 public interface UserPurchaseRepository extends ReactiveMongoRepository<UserPurchase, ObjectId> {
     Mono<UserPurchase> findByUserPurchaseKey(String userPurchaseKey);
+
+    Mono<UserPurchase> findByPaymentRef(String paymentRef);
 }

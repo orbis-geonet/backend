@@ -1,14 +1,21 @@
 [toolchain]
+# Match the CLI to anchor-lang 1.0.0 so IDL generation works (avm fetches it if needed).
+anchor_version = "1.0.0"
 
 [features]
 resolution = true
 skip-lint = false
 
+# orbis-protocol is the only program crate; this stops Anchor from scanning the
+# sibling programs/idl folder (JSON IDLs, not a crate).
+[workspace]
+members = ["programs/orbis-protocol"]
+
 [programs.devnet]
-orbis_protocol = "2FrLL3KDojR89jFEp2doriVtAjfXB3mN8tTxbK3VUQBX"
+orbis_protocol = "x2HARL2kBx2jVHtgWvf8sX8zbZ3sBAvtHJeg8AgosqR"
 
 [programs.mainnet]
-orbis_protocol = "2FrLL3KDojR89jFEp2doriVtAjfXB3mN8tTxbK3VUQBX"
+orbis_protocol = "x2HARL2kBx2jVHtgWvf8sX8zbZ3sBAvtHJeg8AgosqR"
 
 [provider]
 cluster = "devnet"

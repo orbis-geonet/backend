@@ -1,10 +1,11 @@
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
-import { BATCH_DISC, decodeBatchEvent, DecodedBatch } from "./decoder.js";
-import { COLLECTION_ORDER } from "../config.js";
+import axios from "axios";
+import { MANIFEST_DISC, decodeManifestEvent, DecodedManifest } from "./decoder.js";
+import { SELF_CONSUME } from "../config.js";
+import { sha256Hex } from "../network/manifest.js";
+import { log } from "../logger.js";
 import { readFileSync } from "node:fs";
-
-
 
 export async function fetchCloneInfo(connection: Connection, providerPubkey: PublicKey, programId: PublicKey): Promise<{ baseUrl: string, trustScore: number, isGenesis: boolean } | null> {
     try {
@@ -53,13 +54,13 @@ export async function discoverAllProviders(db: any, connection: Connection, prog
             );
             upserted++;
         }
-        console.log(`Discovered ${upserted} clones from on-chain CloneInfo PDAs`);
+        log.info(`Discovered ${upserted} clones from on-chain CloneInfo PDAs`);
     } catch (e: any) {
-        console.error(`discoverAllProviders failed: ${e.message}`);
+        log.error(`discoverAllProviders failed: ${e.message}`);
     }
 }
 
-export async function scanHistory(connection: Connection, addressToScan: PublicKey, untilSignature?: string): Promise<DecodedBatch[]> {
+export async function scanHistory(connection: Connection, addressToScan: PublicKey, untilSignature?: string): Promise<DecodedManifest[]> {
     if (untilSignature) {
         const latestSigs = await connection.getSignaturesForAddress(addressToScan, { limit: 1 });
         if (latestSigs.length > 0 && latestSigs[0].signature === untilSignature) {
@@ -91,27 +92,26 @@ export async function scanHistory(connection: Connection, addressToScan: PublicK
     if (signatures.length === 0) return [];
 
     console.log(`Found ${signatures.length} new transactions to scan. Processing serially...`);
-    const batches: DecodedBatch[] = [];
+    const manifests: DecodedManifest[] = [];
     for (let i = 0; i < signatures.length; i++) {
         const sig = signatures[i];
         try {
             const tx = await connection.getTransaction(sig, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
             if (tx) {
-                const batchesInTx: Set<string> = new Set();
+                const seen: Set<string> = new Set();
                 const parseBuffer = (buffer: Buffer) => {
                     if (buffer.length < 8) return;
                     const disc = buffer.subarray(0, 8);
-                    if (disc.equals(BATCH_DISC)) {
-                        const decoded = decodeBatchEvent(buffer);
+                    if (disc.equals(MANIFEST_DISC)) {
+                        const decoded = decodeManifestEvent(buffer);
                         if (decoded) {
                             const dedupKey = `${decoded.batchId}-${decoded.provider}`;
-                            if (!batchesInTx.has(dedupKey)) {
-                                batchesInTx.add(dedupKey);
+                            if (!seen.has(dedupKey)) {
+                                seen.add(dedupKey);
                                 decoded.signature = sig;
                                 decoded.slot = tx.slot || 0;
-                                // Use on-chain blockTime as the source of truth for the batch
                                 decoded.timestamp = tx.blockTime || Math.floor(Date.now() / 1000);
-                                batches.push(decoded);
+                                manifests.push(decoded);
                             }
                         }
                     }
@@ -122,25 +122,7 @@ export async function scanHistory(connection: Connection, addressToScan: PublicK
                         for (const ix of inner.instructions) {
                             try {
                                 const dataStr = (ix as any).data;
-                                if (dataStr) {
-                                    const buffer = Buffer.from(bs58.decode(dataStr));
-                                    parseBuffer(buffer);
-                                }
-                            } catch (e) { }
-                        }
-                    }
-                }
-
-                if (tx.transaction?.message) {
-                    const compiledInstructions = tx.transaction.message.compiledInstructions || (tx.transaction.message as any).instructions;
-                    if (compiledInstructions) {
-                        for (const ix of compiledInstructions as any[]) {
-                            try {
-                                const dataStr = ix.data;
-                                if (dataStr) {
-                                    const buffer = Buffer.from(bs58.decode(dataStr));
-                                    parseBuffer(buffer);
-                                }
+                                if (dataStr) parseBuffer(Buffer.from(bs58.decode(dataStr)));
                             } catch (e) { }
                         }
                     }
@@ -151,8 +133,7 @@ export async function scanHistory(connection: Connection, addressToScan: PublicK
                         if (!log.includes("Program data: ")) continue;
                         try {
                             const base64Data = log.split("Program data: ")[1];
-                            const buffer = Buffer.from(base64Data, "base64");
-                            parseBuffer(buffer);
+                            parseBuffer(Buffer.from(base64Data, "base64"));
                         } catch (e) { }
                     }
                 }
@@ -165,277 +146,215 @@ export async function scanHistory(connection: Connection, addressToScan: PublicK
             console.log(`   - Progress: ${i + 1}/${signatures.length} processed...`);
         }
     }
-    return batches;
+    return manifests;
 }
 
-
-export async function cacheToMongo(db: any, batches: DecodedBatch[], connection: Connection, programId: PublicKey, localProvider?: string, payer?: Keypair) {
-    const byProvider: Record<string, DecodedBatch[]> = {};
-    for (const b of batches) {
-        byProvider[b.provider] = byProvider[b.provider] || [];
-        byProvider[b.provider].push(b);
-    }
-    for (const provider in byProvider) {
-        if (localProvider && provider === localProvider) {
-            console.log(`   - Skipping historical self-batches from ${provider.slice(0, 8)}...`);
+async function materializeManifestEntries(db: any, m: DecodedManifest, manifest: any) {
+    const entries = Array.isArray(manifest.entries) ? manifest.entries : [];
+    const batchPointer = manifest.batchPointer || `/v3/batches/${m.batchId}`;
+    for (const e of entries) {
+        if (e.action === 2) {
+            await db.collection("network_events").deleteMany({
+                provider: m.provider,
+                collectionName: e.collectionName,
+                keyHash: e.keyHash,
+                secondaryHash: e.secondaryHash,
+            });
             continue;
         }
-        const sorted = byProvider[provider].sort((a, b) => a.batchId - b.batchId);
-        const collectionRoots: Record<string, string> = {};
-        const collectionEndpoints: Record<string, string> = {};
-
-        for (const batch of sorted) {
-            for (const root of batch.collectionRoots) {
-                collectionRoots[root.collectionName] = root.root;
-            }
-            if (batch.batchPointer && batch.batchPointer.includes("=")) {
-                const pairs = batch.batchPointer.split("|");
-                for (const pair of pairs) {
-                    const [idStr, path] = pair.split("=");
-                    const id = parseInt(idStr);
-                    const name = COLLECTION_ORDER[id];
-                    if (name && path) collectionEndpoints[name] = path;
-                }
-            }
-        }
-
-        const latestBatch = sorted[sorted.length - 1];
-        const providerDoc = await db.collection("network_providers").findOne({ provider });
-        if (!providerDoc) {
-            console.log(`   - Skipping batch fields for ${provider.slice(0, 8)}: provider not yet discovered from on-chain PDAs`);
-            continue;
-        }
-        const nextCollectionRoots = { ...(providerDoc.collectionRoots || {}), ...collectionRoots };
-        const nextCollectionEndpoints = { ...(providerDoc.collectionEndpoints || {}), ...collectionEndpoints };
-        await db.collection("network_providers").updateOne(
-            { provider },
-            { $set: { collectionRoots: nextCollectionRoots, collectionEndpoints: nextCollectionEndpoints, latestBatchId: latestBatch.batchId, batchUpdatedAt: new Date() } }
+        const doc = {
+            keyHash: e.keyHash,
+            secondaryHash: e.secondaryHash,
+            nameHash: e.nameHash,
+            parentHash: e.parentHash,
+            parentHash2: e.parentHash2,
+            authorHash: e.authorHash,
+            geoHash: e.geoHash,
+            timestamp: new Date((e.timestamp || m.timestamp || Math.floor(Date.now() / 1000)) * 1000),
+            collectionName: e.collectionName,
+            collectionId: e.collectionId,
+            action: e.action,
+            provider: m.provider,
+            batchId: m.batchId,
+            batchPointer,
+            manifestHash: m.manifestHash,
+            payloadHash: m.payloadHash,
+            txHash: m.signature,
+            source: "manifest_v2",
+            commitStatus: "committed",
+            ei: e.ei,
+            updatedAt: new Date(),
+        };
+        await db.collection("network_events").updateOne(
+            { provider: m.provider, batchId: m.batchId, ei: e.ei },
+            { $set: doc, $setOnInsert: { status: "pending", createdAt: new Date() } },
+            { upsert: true }
         );
-        const baseUrl = providerDoc.baseUrl || null;
+    }
+    log.info(`Materialized ${entries.length} manifest entries from #${m.batchId} (${m.provider.slice(0, 8)}...)`);
+}
 
-        const allEvents = sorted.flatMap((b) => b.events.map(e => ({
-            ...e,
-            txHash: b.signature,
-            onChainTime: b.timestamp,
-            batchId: b.batchId,
-            batchPointer: b.batchPointer,
-        })));
-        for (const event of allEvents) {
-            const filter: any = {
-                txHash: event.txHash,
-                provider: provider,
-                collectionName: event.collectionName
-            };
-            if (event.keyHash && event.keyHash !== "0000000000000000") {
-                filter.keyHash = event.keyHash;
-            } else if (event.secondaryHash && event.secondaryHash !== "00000000") {
-                filter.secondaryHash = event.secondaryHash;
-            } else if (event.nameHash && event.nameHash !== "00000000") {
-                filter.nameHash = event.nameHash;
-            } else {
-                continue;
+async function eagerFetchPayload(db: any, m: DecodedManifest, baseUrl: string, connection: Connection, payer: Keypair) {
+    try {
+        const { proxyToProvider } = await import("../proxy.js");
+        const { syncStateToDb } = await import("../models/borsh-schemas.js");
+        const result = await proxyToProvider(
+            [{ provider: m.provider, baseUrl }],
+            `/v3/batches/${m.batchId}`,
+            { provider: m.provider },
+            db,
+            payer,
+            connection
+        );
+        if (result?.data) {
+            const syncResult = await syncStateToDb(db, Buffer.from(JSON.stringify(result.data)));
+            const cached = Object.entries(syncResult.collections).filter(([, c]) => (c as number) > 0).map(([n]) => n);
+            if (cached.length > 0) {
+                await db.collection("network_events").updateMany(
+                    { provider: m.provider, batchId: m.batchId, collectionName: { $in: cached } },
+                    { $set: { status: "synced", cacheStatus: "auto-fetch-completed", cachedCollections: cached, syncedAt: new Date(), updatedAt: new Date() } }
+                );
+                log.info(`Auto-fetched payload for manifest #${m.batchId}: ${cached.join(", ")}`);
             }
-            const doc = {
-                keyHash: event.keyHash,
-                secondaryHash: event.secondaryHash,
-                nameHash: event.nameHash,
-                parentHash: event.parentHash,
-                parentHash2: event.parentHash2,
-                authorHash: event.authorHash,
-                geoHash: event.geoHash,
-                timestamp: new Date((event.onChainTime || event.timestamp || Math.floor(Date.now() / 1000)) * 1000),
-                txHash: event.txHash,
-                batchId: event.batchId,
-                batchPointer: event.batchPointer,
-                action: event.action,
-                collectionName: event.collectionName,
-                collectionId: event.collectionId,
-                provider,
-            };
-            await db.collection("network_events").updateOne(filter, { $set: doc, $setOnInsert: { status: "pending" } }, { upsert: true });
+        }
+    } catch (e: any) {
+        log.warn(`Auto-fetch payload failed for #${m.batchId}: ${e.message}`);
+    }
+}
+
+export async function cacheToMongo(db: any, manifests: DecodedManifest[], connection: Connection, programId: PublicKey, localProvider?: string, payer?: Keypair) {
+    for (const m of manifests) {
+        const isSelf = !!(localProvider && m.provider === localProvider);
+        if (isSelf && !SELF_CONSUME) {
+            log.info(`   - Skipping self manifest #${m.batchId} from ${m.provider.slice(0, 8)}...`);
+            continue;
         }
 
-        const localInfo = payer ? await fetchCloneInfo(connection, payer.publicKey, programId) : null;
-        const localBaseUrl = localInfo?.baseUrl || null;
-        const isSelfUrl = baseUrl && localBaseUrl && baseUrl.replace(/\/$/, "") === localBaseUrl.replace(/\/$/, "");
-        /*
-        if (isSelfUrl) {
-            console.log(`   - Skipping auto-fetch for ${provider.slice(0, 8)}: registered baseUrl matches local node URL`);
+        let providerDoc = await db.collection("network_providers").findOne({ provider: m.provider });
+        if (!providerDoc) {
+            await discoverAllProviders(db, connection, programId);
+            providerDoc = await db.collection("network_providers").findOne({ provider: m.provider });
         }
-        */
-        if (process.env.AUTO_FETCH_EVENTS === "true" && baseUrl && payer && !isSelfUrl) {
-            const { proxyToProvider } = await import("../proxy.js");
-            const { syncStateToDb } = await import("../models/borsh-schemas.js");
-            for (const batch of sorted) {
-                if (!batch.batchPointer) continue;
-                try {
-                    const result = await proxyToProvider(
-                        [{ provider, baseUrl: baseUrl! }],
-                        batch.batchPointer,
-                        { provider },
-                        db,
-                        payer!,
-                        connection
-                    );
-                    if (result?.data) {
-                        const syncResult = await syncStateToDb(db, Buffer.from(JSON.stringify(result.data)));
-                        const cachedCollections = Object.entries(syncResult.collections)
-                            .filter(([, count]) => count > 0)
-                            .map(([collectionName]) => collectionName);
+        if (!providerDoc?.baseUrl) {
+            log.warn(`   - No baseUrl for provider ${m.provider.slice(0, 8)}; skipping manifest #${m.batchId}`);
+            continue;
+        }
+        const baseUrl = providerDoc.baseUrl.replace(/\/$/, "");
 
-                        if (cachedCollections.length === 0) {
-                            await db.collection("network_events").updateMany(
-                                { provider, txHash: batch.signature },
-                                {
-                                    $set: {
-                                        cacheStatus: "failed",
-                                        cacheError: "Auto-fetch returned no cacheable documents",
-                                        updatedAt: new Date(),
-                                    }
-                                }
-                            );
-                            console.warn(`   - Batch pointer auto-fetch returned no cacheable documents for ${batch.batchPointer}; leaving events pending.`);
-                            continue;
-                        }
+        let raw: string;
+        try {
+            const res = await axios.get(`${baseUrl}${m.manifestPointer}?provider=${m.provider}`, { responseType: "text", transformResponse: (r) => r });
+            raw = typeof res.data === "string" ? res.data : JSON.stringify(res.data);
+        } catch (e: any) {
+            log.warn(`   - Failed to fetch manifest ${m.manifestPointer} from ${baseUrl}: ${e.message}`);
+            continue;
+        }
 
-                        console.log(`   - Batch pointer auto-fetch cached collections for ${batch.batchPointer}: ${cachedCollections.map(name => `${name}=${syncResult.collections[name]}`).join(", ")}`);
-                        await db.collection("network_events").updateMany(
-                            { provider, txHash: batch.signature, collectionName: { $in: cachedCollections } },
-                            {
-                                $set: {
-                                    status: "synced",
-                                    cacheStatus: "auto-fetch-completed",
-                                    cachedCollections,
-                                    syncedAt: new Date(),
-                                    updatedAt: new Date(),
-                                },
-                                $unset: { cacheError: "" }
-                            }
-                        );
+        const computed = sha256Hex(raw);
+        if (computed !== m.manifestHash) {
+            log.warn(`   - Manifest hash mismatch #${m.batchId}: expected ${m.manifestHash}, got ${computed}. Discarding.`);
+            continue;
+        }
 
-                        const eventCollections = [...new Set(batch.events.map(event => event.collectionName).filter(Boolean))];
-                        const missingCollections = eventCollections.filter(collectionName => !cachedCollections.includes(collectionName));
-                        if (missingCollections.length > 0) {
-                            await db.collection("network_events").updateMany(
-                                { provider, txHash: batch.signature, collectionName: { $in: missingCollections } },
-                                {
-                                    $set: {
-                                        cacheStatus: "missing-batch-payload",
-                                        cacheError: `Auto-fetch payload did not include cacheable docs for: ${missingCollections.join(", ")}`,
-                                        updatedAt: new Date(),
-                                    }
-                                }
-                            );
-                            console.warn(`   - Batch pointer auto-fetch did not cache ${missingCollections.join(", ")} for ${batch.batchPointer}; leaving those events pending.`);
-                        }
-                    }
-                } catch (e: any) {
-                    console.warn(`   - Batch pointer auto-fetch failed for ${batch.batchPointer}: ${e.message}`);
-                }
-            }
+        let manifest: any;
+        try {
+            manifest = JSON.parse(raw);
+        } catch (e: any) {
+            log.warn(`   - Manifest JSON parse failed #${m.batchId}: ${e.message}`);
+            continue;
+        }
+
+        await materializeManifestEntries(db, m, manifest);
+
+        await db.collection("network_providers").updateOne(
+            { provider: m.provider },
+            { $set: { latestBatchId: m.batchId, batchUpdatedAt: new Date() } }
+        );
+
+        if (process.env.AUTO_FETCH_EVENTS === "true" && payer && !isSelf) {
+            await eagerFetchPayload(db, m, baseUrl, connection, payer);
         }
     }
 
-    const latestSig = batches.reduce((latest, b) => (!latest || b.slot > latest.slot ? b : latest), batches[0]);
-    if (latestSig) {
+    const latest = manifests.reduce((acc: DecodedManifest | null, b) => (!acc || b.slot > acc.slot ? b : acc), null);
+    if (latest) {
         await db.collection("network_sync_state").updateOne(
             { _id: "last_scan" as any },
-            { $set: { lastScannedAt: new Date(), totalBatches: batches.length, lastSignature: latestSig.signature } },
+            { $set: { lastScannedAt: new Date(), totalBatches: manifests.length, lastSignature: latest.signature } },
             { upsert: true }
         );
     }
 }
 
-export function startRealtimeListener(connection: Connection, programId: PublicKey, db: any, batches: DecodedBatch[], localProvider?: string, payer?: Keypair) {
-    console.log(`Realtime: Monitoring program ${programId.toBase58()}... (localProvider: ${localProvider || 'none'})`);
+export function startRealtimeListener(connection: Connection, programId: PublicKey, db: any, seen: DecodedManifest[], localProvider?: string, payer?: Keypair) {
+    log.info(`Realtime: Monitoring program ${programId.toBase58()}... (localProvider: ${localProvider || 'none'})`);
     connection.onLogs(
         programId,
         async (logs) => {
-            const batchesInTx: Set<string> = new Set();
-            const decodedBatches: DecodedBatch[] = [];
+            const dedup: Set<string> = new Set();
+            const decodedManifests: DecodedManifest[] = [];
             const parseBuffer = (buffer: Buffer, blockTime: number, txSlot: number) => {
                 if (buffer.length < 8) return;
                 const disc = buffer.subarray(0, 8);
-
-                if (disc.equals(BATCH_DISC)) {
-                    const decoded = decodeBatchEvent(buffer);
+                if (disc.equals(MANIFEST_DISC)) {
+                    const decoded = decodeManifestEvent(buffer);
                     if (decoded) {
                         const dedupKey = `${decoded.batchId}-${decoded.provider}`;
-                        if (!batchesInTx.has(dedupKey)) {
-                            batchesInTx.add(dedupKey);
-                            if (localProvider && decoded.provider === localProvider) {
-                                console.log(`Realtime: Skipping self-batch #${decoded.batchId} from ${decoded.provider.slice(0, 8)}...`);
-                                return;
-                            }
-
-                            console.log(`Realtime: Processing batch #${decoded.batchId} from ${decoded.provider.slice(0, 8)}... (${decoded.events.length} events)`);
+                        if (!dedup.has(dedupKey)) {
+                            dedup.add(dedupKey);
+                            log.info(`Realtime: Processing manifest #${decoded.batchId} from ${decoded.provider.slice(0, 8)}... (${decoded.entryCount} entries)`);
                             decoded.signature = logs.signature;
                             decoded.slot = txSlot;
                             decoded.timestamp = blockTime || Math.floor(Date.now() / 1000);
-                            decodedBatches.push(decoded);
+                            decodedManifests.push(decoded);
                         }
                     }
                 }
             };
 
             const extractedBuffers: Buffer[] = [];
-            let hasBatchInstruction = false;
+            let hasManifestInstruction = false;
             let hasGenesisChange = false;
 
             for (const log of logs.logs) {
-                if (log.includes("Instruction: SyncCollectionBatch")) {
-                    hasBatchInstruction = true;
-                }
-                if (log.includes("Instruction: GrantGenesis") || log.includes("Instruction: RevokeGenesis")) {
-                    hasGenesisChange = true;
-                }
+                if (log.includes("Instruction: SyncIndexManifest")) hasManifestInstruction = true;
+                if (log.includes("Instruction: GrantGenesis") || log.includes("Instruction: RevokeGenesis")) hasGenesisChange = true;
                 if (!log.includes("Program data: ")) continue;
                 try {
                     const base64Data = log.split("Program data: ")[1];
                     const buffer = Buffer.from(base64Data, "base64");
-                    const disc = buffer.subarray(0, 8);
-
-                    if (disc.equals(BATCH_DISC)) {
-                        extractedBuffers.push(buffer);
-                    }
+                    if (buffer.subarray(0, 8).equals(MANIFEST_DISC)) extractedBuffers.push(buffer);
                 } catch (e) { }
             }
 
             if (hasGenesisChange) {
-                console.log(`Realtime: Detected genesis grant/revoke instruction in ${logs.signature.slice(0, 8)} - refreshing providers`);
-                discoverAllProviders(db, connection, programId).catch(e => console.error(`Provider refresh failed: ${e.message}`));
+                log.info(`Realtime: Detected genesis grant/revoke instruction in ${logs.signature.slice(0, 8)} - refreshing providers`);
+                discoverAllProviders(db, connection, programId).catch(e => log.error(`Provider refresh failed: ${e.message}`));
             }
 
-            if (hasBatchInstruction || extractedBuffers.length > 0) {
+            if (hasManifestInstruction || extractedBuffers.length > 0) {
                 const tx = await connection.getTransaction(logs.signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
                 const blockTime = tx?.blockTime || Math.floor(Date.now() / 1000);
                 const slot = tx?.slot || 0;
 
-                // 1. Process buffers found in logs
-                for (const buf of extractedBuffers) {
-                    parseBuffer(buf, blockTime, slot);
-                }
+                for (const buf of extractedBuffers) parseBuffer(buf, blockTime, slot);
 
-                // 2. Process buffers found in internal instructions (fall back)
                 if (tx?.meta?.innerInstructions) {
                     for (const inner of tx.meta.innerInstructions) {
                         for (const ix of inner.instructions) {
                             try {
                                 const dataStr = (ix as any).data;
-                                if (dataStr) {
-                                    const buffer = Buffer.from(bs58.decode(dataStr));
-                                    parseBuffer(buffer, blockTime, slot);
-                                }
+                                if (dataStr) parseBuffer(Buffer.from(bs58.decode(dataStr)), blockTime, slot);
                             } catch (e) { }
                         }
                     }
                 }
 
-                if (decodedBatches.length > 0) {
-                    cacheToMongo(db, decodedBatches, connection, programId, localProvider, payer).then(() => {
-                        console.log(`Realtime: Successfully indexed ${decodedBatches.length} batch(es) from ${logs.signature.slice(0, 8)}`);
-                        batches.push(...decodedBatches);
-                    }).catch(e => console.error(`Realtime: Failed to index ${logs.signature.slice(0, 8)}:`, e));
+                if (decodedManifests.length > 0) {
+                    cacheToMongo(db, decodedManifests, connection, programId, localProvider, payer).then(() => {
+                        log.info(`Realtime: Successfully indexed ${decodedManifests.length} manifest(s) from ${logs.signature.slice(0, 8)}`);
+                        seen.push(...decodedManifests);
+                    }).catch(e => log.error(`Realtime: Failed to index ${logs.signature.slice(0, 8)}: ${e?.message || e}`));
                 }
             }
         },
@@ -443,26 +362,16 @@ export function startRealtimeListener(connection: Connection, programId: PublicK
     );
 }
 
-export function buildProviderLookup(batches: DecodedBatch[]) {
-    const byCollection: Record<string, Record<string, Set<string>>> = {};
-    for (const batch of batches) {
-        const provider = batch.provider;
-        for (const event of batch.events) {
-            const coll = event.collectionName;
-            if (!byCollection[coll]) byCollection[coll] = {};
-            const addHash = (hname: string, hval: string) => {
-                if (!hval || hval === "00000000" || hval === "0000000000000000") return;
-                if (!byCollection[coll][hname]) byCollection[coll][hname] = new Set();
-                byCollection[coll][hname].add(`${hval}|${provider}`);
-            };
-            addHash("keyHash", event.keyHash);
-            addHash("secondaryHash", event.secondaryHash);
-            addHash("nameHash", event.nameHash);
-            addHash("parentHash", event.parentHash);
-            addHash("parentHash2", event.parentHash2);
-            addHash("authorHash", event.authorHash);
-            addHash("geoHash", event.geoHash);
-        }
-    }
-    return byCollection;
+export async function ensureNetworkIndexes(db: any) {
+    await db.collection("network_events").createIndex({ collectionName: 1, status: 1, keyHash: 1 }).catch(() => {});
+    await db.collection("network_events").createIndex({ collectionName: 1, status: 1, secondaryHash: 1 }).catch(() => {});
+    await db.collection("network_events").createIndex({ collectionName: 1, status: 1, authorHash: 1 }).catch(() => {});
+    await db.collection("network_events").createIndex({ collectionName: 1, status: 1, nameHash: 1 }).catch(() => {});
+    await db.collection("network_events").createIndex({ collectionName: 1, status: 1, parentHash: 1 }).catch(() => {});
+    await db.collection("network_events").createIndex({ collectionName: 1, status: 1, geoHash: 1 }).catch(() => {});
+    await db.collection("network_events").createIndex(
+        { provider: 1, batchId: 1, ei: 1 },
+        { unique: true, partialFilterExpression: { ei: { $exists: true } } }
+    ).catch(() => {});
 }
+

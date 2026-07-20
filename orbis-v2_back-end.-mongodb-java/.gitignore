@@ -40,6 +40,8 @@ out/
 /src/main/resources/*.yaml
 /src/main/resources/*.yml
 
-### Legacy deploy/test assets not needed for clone operator runtime ###
-/src/main/appengine/
+### Secrets
+/src/main/appengine/*.yaml
+/src/main/appengine/*.yml
+pk.rsa
 /src/main/resources/polindromTest/

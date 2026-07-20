@@ -9,7 +9,7 @@ import { BN } from "bn.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, "../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../.env"), quiet: true });
 
 async function main() {
     const rpcUrl = process.env.RPC_URL;
@@ -33,6 +33,23 @@ async function main() {
     const treasury = treasuryArg ? new PublicKey(treasuryArg) : admin.publicKey;
 
     const connection = new Connection(rpcUrl, "confirmed");
+    const wallet = new anchor.Wallet(admin);
+    const provider = new anchor.AnchorProvider(connection, wallet, { preflightCommitment: "confirmed" });
+    const idl = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../programs/idl/orbis_protocol.json"), "utf-8"));
+    const program = new anchor.Program(idl as any, provider);
+    const [configPda] = PublicKey.findProgramAddressSync([Buffer.from("global_config")], programId);
+
+    let alreadyInitialized = false;
+    try {
+        const existing: any = await program.account.globalConfig.fetch(configPda);
+        console.log(`Program already initialized (config ${configPda.toBase58()}; write_fee=${existing.writeFee.toString()}, fee_per_mb=${existing.feePerMb.toString()}, min_fee=${existing.minFee.toString()}, registration_fee=${existing.registrationFee.toString()}).`);
+        alreadyInitialized = true;
+    } catch {
+    }
+
+    if (alreadyInitialized) {
+        return;
+    }
 
     console.log("=== Orbis Protocol Initializer ===");
     console.log(`Program ID   : ${programId.toBase58()}`);
@@ -46,44 +63,17 @@ async function main() {
     const unit = 10 ** decimals;
     console.log(`ORBIS Decimals: ${decimals} (1 ORBIS = ${unit} raw units)`);
 
-    // Fee schedule (all amounts in raw token units)
-    const writeFee        = new BN(Math.round(0.0001 * unit));   // 0.0001 ORBIS per blockchain write
-    const feePerMb        = new BN(Math.round(0.0001 * unit));   // 0.0001 ORBIS per MB
-    const minFee          = new BN(Math.round(0.0001 * unit));   // 0.0001 ORBIS minimum
-    const registrationFee = new BN(Math.round(50 * unit));       // 50 ORBIS one-time registration
+    const writeFee        = new BN(Math.round(0.0001 * unit));
+    const feePerMb        = new BN(Math.round(0.0001 * unit));
+    const minFee          = new BN(Math.round(0.0001 * unit));
+    const registrationFee = new BN(Math.round(50 * unit));
 
     console.log("\nFee schedule:");
     console.log(`  write_fee        : ${writeFee.toString()} (0.0001 ORBIS)`);
     console.log(`  fee_per_mb       : ${feePerMb.toString()} (0.0001 ORBIS/MB)`);
     console.log(`  min_fee          : ${minFee.toString()} (0.0001 ORBIS)`);
     console.log(`  registration_fee : ${registrationFee.toString()} (50 ORBIS)`);
-
-    const wallet = new anchor.Wallet(admin);
-    const provider = new anchor.AnchorProvider(connection, wallet, { preflightCommitment: "confirmed" });
-
-    const idl = JSON.parse(fs.readFileSync(path.resolve(__dirname, "../programs/idl/orbis_protocol.json"), "utf-8"));
-
-    const program = new anchor.Program(idl as any, provider);
-
-    const [configPda] = PublicKey.findProgramAddressSync([Buffer.from("global_config")], programId);
     console.log(`\nConfig PDA   : ${configPda.toBase58()}`);
-
-    // Check if already initialized
-    try {
-        const existing: any = await program.account.globalConfig.fetch(configPda);
-        console.log("\n⚠️  Config account already exists:");
-        console.log(`  admin            : ${existing.admin.toBase58()}`);
-        console.log(`  treasury         : ${existing.treasury.toBase58()}`);
-        console.log(`  write_fee        : ${existing.writeFee.toString()}`);
-        console.log(`  fee_per_mb       : ${existing.feePerMb.toString()}`);
-        console.log(`  min_fee          : ${existing.minFee.toString()}`);
-        console.log(`  registration_fee : ${existing.registrationFee.toString()}`);
-        console.log("\nUse `update-config-fees` script to change fees, or deploy with a new program ID to re-initialize.");
-        process.exit(0);
-    } catch {
-        // Account doesn't exist — proceed with initialization
-    }
-
     console.log("\nInitializing program...");
 
     const tx = await program.methods

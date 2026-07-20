@@ -689,6 +689,92 @@
       ]
     },
     {
+      "name": "pay_tribe",
+      "docs": [
+        "Split a single ORBIS payment atomically: 90% tribe owner, 7% clone",
+        "operator, 3% treasury. The payer (buyer) is the only signer \u2014 we never",
+        "custody funds. `payment_ref` is the off-chain correlation/idempotency key",
+        "echoed in the emitted event."
+      ],
+      "discriminator": [
+        129,
+        250,
+        227,
+        193,
+        244,
+        74,
+        154,
+        204
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer_token_account",
+          "writable": true
+        },
+        {
+          "name": "tribe_owner_token_account",
+          "writable": true
+        },
+        {
+          "name": "clone_token_account",
+          "writable": true
+        },
+        {
+          "name": "treasury_token_account",
+          "writable": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "payment_ref",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "register_clone",
       "discriminator": [
         45,
@@ -965,16 +1051,16 @@
       "args": []
     },
     {
-      "name": "sync_collection_batch",
+      "name": "sync_index_manifest",
       "discriminator": [
-        24,
-        15,
-        162,
-        167,
-        43,
-        133,
-        233,
-        143
+        106,
+        136,
+        37,
+        114,
+        203,
+        197,
+        163,
+        244
       ],
       "accounts": [
         {
@@ -1071,28 +1157,42 @@
           "type": "u32"
         },
         {
-          "name": "collection_roots",
+          "name": "manifest_hash",
           "type": {
-            "vec": {
-              "defined": {
-                "name": "CollectionRoot"
-              }
-            }
+            "array": [
+              "u8",
+              32
+            ]
           }
         },
         {
-          "name": "events",
+          "name": "payload_hash",
           "type": {
-            "vec": {
-              "defined": {
-                "name": "BatchEvent"
-              }
-            }
+            "array": [
+              "u8",
+              32
+            ]
           }
         },
         {
-          "name": "batch_pointer",
+          "name": "manifest_pointer",
           "type": "string"
+        },
+        {
+          "name": "entry_count",
+          "type": "u32"
+        },
+        {
+          "name": "action_count",
+          "type": "u32"
+        },
+        {
+          "name": "from_ts",
+          "type": "i64"
+        },
+        {
+          "name": "to_ts",
+          "type": "i64"
         }
       ]
     },
@@ -1549,16 +1649,29 @@
   ],
   "events": [
     {
-      "name": "CollectionBatchSynced",
+      "name": "IndexManifestCommitted",
       "discriminator": [
-        217,
-        142,
-        122,
-        96,
-        162,
-        1,
-        182,
-        142
+        76,
+        78,
+        202,
+        128,
+        184,
+        177,
+        88,
+        13
+      ]
+    },
+    {
+      "name": "TribePaymentMade",
+      "discriminator": [
+        21,
+        131,
+        229,
+        200,
+        27,
+        98,
+        35,
+        230
       ]
     }
   ],
@@ -1626,48 +1739,6 @@
   ],
   "types": [
     {
-      "name": "BatchEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "collection_id",
-            "type": "u8"
-          },
-          {
-            "name": "action",
-            "type": "u8"
-          },
-          {
-            "name": "field_mask",
-            "type": "u8"
-          },
-          {
-            "name": "key_hash",
-            "type": {
-              "array": [
-                "u8",
-                8
-              ]
-            }
-          },
-          {
-            "name": "timestamp",
-            "type": {
-              "array": [
-                "u8",
-                4
-              ]
-            }
-          },
-          {
-            "name": "opt_data",
-            "type": "bytes"
-          }
-        ]
-      }
-    },
-    {
       "name": "CloneInfo",
       "type": {
         "kind": "struct",
@@ -1695,71 +1766,6 @@
           {
             "name": "is_genesis",
             "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "CollectionBatchSynced",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "packet_type",
-            "type": "u8"
-          },
-          {
-            "name": "batch_id",
-            "type": "u32"
-          },
-          {
-            "name": "collection_roots",
-            "type": {
-              "vec": {
-                "defined": {
-                  "name": "CollectionRoot"
-                }
-              }
-            }
-          },
-          {
-            "name": "events",
-            "type": {
-              "vec": {
-                "defined": {
-                  "name": "BatchEvent"
-                }
-              }
-            }
-          },
-          {
-            "name": "batch_pointer",
-            "type": "string"
-          },
-          {
-            "name": "provider",
-            "type": "pubkey"
-          }
-        ]
-      }
-    },
-    {
-      "name": "CollectionRoot",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "collection_id",
-            "type": "u8"
-          },
-          {
-            "name": "root",
-            "type": {
-              "array": [
-                "u8",
-                32
-              ]
-            }
           }
         ]
       }
@@ -1805,6 +1811,64 @@
       }
     },
     {
+      "name": "IndexManifestCommitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "packet_type",
+            "type": "u8"
+          },
+          {
+            "name": "batch_id",
+            "type": "u32"
+          },
+          {
+            "name": "manifest_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "payload_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "manifest_pointer",
+            "type": "string"
+          },
+          {
+            "name": "entry_count",
+            "type": "u32"
+          },
+          {
+            "name": "action_count",
+            "type": "u32"
+          },
+          {
+            "name": "from_ts",
+            "type": "i64"
+          },
+          {
+            "name": "to_ts",
+            "type": "i64"
+          },
+          {
+            "name": "provider",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
       "name": "StreamingEscrow",
       "type": {
         "kind": "struct",
@@ -1828,6 +1892,55 @@
           {
             "name": "withdrawal_requested_at",
             "type": "i64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TribePaymentMade",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "payer",
+            "type": "pubkey"
+          },
+          {
+            "name": "payment_ref",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "owner_token_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "clone_token_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury_token_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner_cut",
+            "type": "u64"
+          },
+          {
+            "name": "clone_cut",
+            "type": "u64"
+          },
+          {
+            "name": "treasury_cut",
+            "type": "u64"
           }
         ]
       }

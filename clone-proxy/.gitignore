@@ -5,3 +5,7 @@ package-lock.json
 /wallet
 /target
 Cargo.lock
+/scripts/devnet-test-manifest-flow.ts
+/scripts/devnet-test-pay-tribe.ts
+/scripts/devnet-test-payment-flow.ts
+/test/simulate-100-actions.ts

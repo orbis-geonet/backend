@@ -28,10 +28,8 @@ public abstract class UserPaymentService {
     }
 
     protected Mono<Subscription> validatePurchaseBeforePayment(Subscription subscription) {
-        if (Objects.isNull(subscription.getStripeProductId()) || subscription.getStripeProductId().isEmpty()) {
-            return Mono.error(() -> new SubscriptionException("There is no product in Stripe for this subscription."));
-        } else if (Objects.isNull(subscription.getStripePriceId()) || subscription.getStripePriceId().isEmpty()){
-            return Mono.error(() -> new SubscriptionException("There is no prise in Stripe for this subscription."));
+        if (Objects.isNull(subscription.getPrice())) {
+            return Mono.error(() -> new SubscriptionException("This subscription has no price."));
         } else {
             return Mono.just(subscription);
         }

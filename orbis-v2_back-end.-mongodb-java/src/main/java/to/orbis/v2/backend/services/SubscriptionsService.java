@@ -19,6 +19,7 @@ import to.orbis.v2.backend.models.dto.SubscriptionDto;
 import to.orbis.v2.backend.models.dto.UserSubscriptionDto;
 import to.orbis.v2.backend.models.dto.stripe.CommissionDto;
 import to.orbis.v2.backend.models.dto.stripe.StripeSecretDto;
+import to.orbis.v2.backend.models.dto.crypto.CryptoPaymentDto;
 import to.orbis.v2.backend.models.entity.Group;
 import to.orbis.v2.backend.models.entity.Subscription;
 import to.orbis.v2.backend.models.entity.User;
@@ -49,8 +50,10 @@ public class SubscriptionsService extends UserPaymentService {
     private final NotificationsService notificationsService;
 
     private final StatisticService statisticService;
+    private final CryptoPaymentIntentClient cryptoPaymentIntentClient;
+    private final PayoutWalletService payoutWalletService;
 
-    public SubscriptionsService(SubscriptionAggregationRepository subscriptionAggregationRepository, SubscriptionRepository subscriptionRepository, StripeAccountRepository stripeAccountRepository, UserSubscriptionRepository userSubscriptionRepository, StripePaymentService stripePaymentService, UsersService usersService, GroupsService groupsService, StripeService stripeService, StripeConfiguration stripeConfiguration, SubscriptionAggregationRepository subscriptionAggregationRepository1, NotificationsService notificationsService, StatisticService statisticService) {
+    public SubscriptionsService(SubscriptionAggregationRepository subscriptionAggregationRepository, SubscriptionRepository subscriptionRepository, StripeAccountRepository stripeAccountRepository, UserSubscriptionRepository userSubscriptionRepository, StripePaymentService stripePaymentService, UsersService usersService, GroupsService groupsService, StripeService stripeService, StripeConfiguration stripeConfiguration, SubscriptionAggregationRepository subscriptionAggregationRepository1, NotificationsService notificationsService, StatisticService statisticService, CryptoPaymentIntentClient cryptoPaymentIntentClient, PayoutWalletService payoutWalletService) {
         super(subscriptionAggregationRepository);
         this.subscriptionRepository = subscriptionRepository;
         this.stripeAccountRepository = stripeAccountRepository;
@@ -62,6 +65,8 @@ public class SubscriptionsService extends UserPaymentService {
         this.stripeConfiguration = stripeConfiguration;
         this.notificationsService = notificationsService;
         this.statisticService = statisticService;
+        this.cryptoPaymentIntentClient = cryptoPaymentIntentClient;
+        this.payoutWalletService = payoutWalletService;
     }
 
     @Transactional
@@ -80,10 +85,7 @@ public class SubscriptionsService extends UserPaymentService {
                     group.setSubscriptions(subscriptionList);
                     return groupsService.saveGroup(group);
                 })
-                .then(
-                        stripeService.createSubscriptionAsProduct(subscription)
-                                .flatMap(subscription1 -> subscriptionRepository.save(subscription))
-                );
+                .then(subscriptionRepository.save(subscription));
     }
 
     @Transactional
@@ -99,13 +101,6 @@ public class SubscriptionsService extends UserPaymentService {
                             sub.setTimestamp(subscription.getTimestamp());
                             sub.setImagesName(subscription.getImagesName());
                             return Mono.just(sub);
-                        })
-                        .flatMap(sub -> {
-                            if (Objects.nonNull(subscription.getPrice()) || Objects.nonNull(subscription.getCurrency())) {
-                                return stripeService.updatePrice(sub);
-                            } else {
-                                return Mono.just(sub);
-                            }
                         })
                         .flatMap(subscriptionRepository::save)
                 );
@@ -127,7 +122,6 @@ public class SubscriptionsService extends UserPaymentService {
                             groupsService.saveGroup(group);
                             return Mono.just(subscription);
                         })
-                        .flatMap(stripeService::archivePrice)
                 )
                 .then();
     }
@@ -142,9 +136,8 @@ public class SubscriptionsService extends UserPaymentService {
                     if (Objects.isNull(group.getMainAdmin()) || group.getMainAdmin().isEmpty()) {
                         return Mono.error(() -> new NoDataFoundException("There is no main user for group."));
                     }
-                    return stripeAccountRepository.findByUserKeyAndDeletedFalseAndStatusIn(userKey, List.of(StripeAccountStatus.READY_TO_USE))
-                            .switchIfEmpty(Mono.error(() -> new NoDataFoundException("There is no validated stripe account for main user. userKey: " + userKey)))
-                            .flatMap(account -> {
+                    return payoutWalletService.requirePayoutPubkey(userKey)
+                            .flatMap(pubkey -> {
                                 group.setIsSubscriptionActivate(true);
                                 group.setTimestamp(Instant.now());
                                 return groupsService.saveGroup(group)
@@ -194,7 +187,7 @@ public class SubscriptionsService extends UserPaymentService {
     }
 
     @Transactional
-    public Mono<StripeSecretDto> subscribe(String subscriptionKey, String userKey) {
+    public Mono<CryptoPaymentDto> subscribe(String subscriptionKey, String userKey, String payerWallet) {
         return subscriptionRepository.findOneBySubscriptionKeyAndDeletedFalse(subscriptionKey)
                 .switchIfEmpty(getNoFoundError())
                 .flatMap(this::validatePurchaseBeforePayment)
@@ -208,26 +201,10 @@ public class SubscriptionsService extends UserPaymentService {
                         })
                         .then(userSubscriptionRepository.findBySubscriptionKeyAndUserKeyAndStatus(subscriptionKey, userKey, UserSubscriptionStatus.ACTIVATED)
                                 .flatMap(userSubscription -> Mono.error(() -> new SubscriptionException("You cannot subscribe, user has already activated this subscription.")))
-                                .then(Mono.just(subscription))
+                                .then(payoutWalletService.requirePayoutPubkey(subscription.getCreatedUserKey()))
                         )
-                        .then(usersService.findUser(userKey, "User not found."))
-                        .flatMap(user -> {
-                            if (Objects.nonNull(user.getCustomerStripeId()) && !user.getCustomerStripeId().isEmpty()) {
-                                return Mono.just(user);
-                            } else {
-                                return stripeService.createCustomer(user.getUserKey())
-                                        .flatMap(customerUserStripeId -> {
-                                            user.setCustomerStripeId(customerUserStripeId);
-                                            return usersService.save(user);
-                                        });
-                            }
-                        })
-                        .flatMap(user -> usersService.findUser(subscription.getCreatedUserKey(), "User cannot be found")
-                                .flatMap(groupOwner -> stripePaymentService.subscribe(subscription, user, groupOwner))
-                                .flatMap(subscriptionResult -> createUserSubscription(subscriptionResult.getStripeId(), user.getUserKey(), subscription)
-                                .flatMap(userSubscription -> stripePaymentService.createFirstPaymentAndReturnCustomerSecret(subscriptionResult, userSubscription.getUserSubscriptionKey(), user.getCustomerStripeId(), subscription)
-                                ))
-                        )
+                        .flatMap(ownerWallet -> cryptoPaymentIntentClient.createIntent(userKey, "subscription", subscriptionKey, 1, payerWallet, ownerWallet, subscription.getPrice().doubleValue())
+                                .flatMap(intent -> createUserSubscription(intent.getRef(), userKey, subscription).thenReturn(intent)))
                 );
     }
 
@@ -236,10 +213,9 @@ public class SubscriptionsService extends UserPaymentService {
         return userSubscriptionRepository.findBySubscriptionKeyAndUserKeyAndStatus(subscriptionKey, userKey, UserSubscriptionStatus.ACTIVATED)
                 .switchIfEmpty(Mono.error(() -> new SubscriptionException("You cannot unsubscribe, user doesn't subscribe.")))
                 .flatMap(userSubscription -> {
-                    userSubscription.setStatus(UserSubscriptionStatus.DEACTIVATED_REQUEST);
+                    userSubscription.setStatus(UserSubscriptionStatus.DEACTIVATED);
                     userSubscription.setTimestamp(Instant.now());
-                    return stripePaymentService.unsubscribe(userSubscription)
-                            .then(userSubscriptionRepository.save(userSubscription))
+                    return userSubscriptionRepository.save(userSubscription)
                             .then();
                 });
     }
@@ -352,13 +328,13 @@ public class SubscriptionsService extends UserPaymentService {
         }
     }
 
-    private Mono<UserSubscription> createUserSubscription(String stripeSubscriptionId, String userKey, Subscription subscription) {
+    private Mono<UserSubscription> createUserSubscription(String paymentRef, String userKey, Subscription subscription) {
         var id = new ObjectId();
         var userSubscription = UserSubscription.builder()
                 .userSubscriptionKey(id.toHexString())
                 .userKey(userKey)
                 .subscriptionKey(subscription.getSubscriptionKey())
-                .subscriptionStripeId(stripeSubscriptionId)
+                .paymentRef(paymentRef)
                 .groupKey(subscription.getGroupKey())
                 .status(UserSubscriptionStatus.START_PAYMENT)
                 .timestamp(Instant.now())

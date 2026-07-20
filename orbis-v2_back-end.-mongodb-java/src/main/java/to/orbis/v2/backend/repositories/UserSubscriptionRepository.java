@@ -15,4 +15,6 @@ public interface UserSubscriptionRepository extends ReactiveMongoRepository<User
     Mono<UserSubscription> findByUserSubscriptionKey(String userSubscriptionKey);
 
     Mono<UserSubscription> findBySubscriptionStripeId(String subscriptionStripeId);
+
+    Mono<UserSubscription> findByPaymentRef(String paymentRef);
 }

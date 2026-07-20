@@ -54,6 +54,7 @@ public class FeedsController {
     PostService postService;
     NextPageMapper nextPageMapper;
     StoryMapper storyMapper;
+    to.orbis.v2.backend.services.NetworkEventLookupService networkEventLookupService;
     StoriesService storiesService;
     UsersService usersService;
     PlacesService placesService;
@@ -448,61 +449,15 @@ public class FeedsController {
     }
 
     private Mono<String> getNetworkEventIdByParentHash(String key, String collectionName, boolean javaProxied) {
-        if (javaProxied || key == null) {
-            return Mono.empty();
-        }
-        String shorthash = hashShort(key);
-        log.info("Hash produced: {}", shorthash);
-
-        Query query = Query.query(Criteria.where("collectionName").is(collectionName).and("status")
-                .is("pending").and("parentHash").is(shorthash))
-                .with(Sort.by(Sort.Direction.DESC, "timestamp"));
-
-        log.info("Query: {}", query);
-
-        return mongoTemplate.find(query, org.bson.Document.class, "network_events")
-                .next()
-                .map(doc -> {
-                    String id = doc.getObjectId("_id").toHexString();
-                    log.info("Found: id={}", id);
-                    return id;
-                })
-                .switchIfEmpty(Mono.defer(() -> {
-                    log.info("Not found for hash: {}", shorthash);
-                    return Mono.empty();
-                }));
+        return networkEventLookupService.byParent(collectionName, key, javaProxied);
     }
 
     private Mono<String> getNetworkEventIdByAuthorHash(String key, String collectionName, boolean javaProxied) {
-        if (javaProxied || key == null) {
-            return Mono.empty();
-        }
-        String shorthash = hashShort(key);
-
-        Query query = Query.query(Criteria.where("collectionName").is(collectionName).and("status")
-                .is("pending").and("authorHash").is(shorthash))
-                .with(Sort.by(Sort.Direction.DESC, "timestamp"));
-
-        return mongoTemplate.find(query, org.bson.Document.class, "network_events")
-                .next()
-                .map(doc -> doc.getObjectId("_id").toHexString())
-                .switchIfEmpty(Mono.empty());
+        return networkEventLookupService.byAuthor(collectionName, key, javaProxied);
     }
 
     private Mono<String> getNetworkEventIdByParentHash2(String key, String collectionName, boolean javaProxied) {
-        if (javaProxied || key == null) {
-            return Mono.empty();
-        }
-        String shorthash = hashShort(key);
-
-        Query query = Query.query(Criteria.where("collectionName").is(collectionName).and("status")
-                .is("pending").and("parentHash2").is(shorthash))
-                .with(Sort.by(Sort.Direction.DESC, "timestamp"));
-
-        return mongoTemplate.find(query, org.bson.Document.class, "network_events")
-                .next()
-                .map(doc -> doc.getObjectId("_id").toHexString())
-                .switchIfEmpty(Mono.empty());
+        return networkEventLookupService.byParent2(collectionName, key, javaProxied);
     }
 
     private String hashShort(String value) {
@@ -526,32 +481,6 @@ public class FeedsController {
     }
     private Mono<String> getNetworkEventId(Double latitude, Double longitude, String collectionName,
             boolean javaProxied) {
-        if (javaProxied || latitude == null || longitude == null) {
-            return Mono.empty();
-        }
-        String geohash = GeoHashUtils.geoHashEncode3Bytes(latitude, longitude);
-        log.info("Hash produced: {}", geohash);
-
-        Query query = Query.query(Criteria.where("collectionName").is(collectionName).and("status")
-                .is("pending"))
-                .with(Sort.by(Sort.Direction.DESC, "timestamp"));
-
-        log.info("Query: {}", query);
-
-        return mongoTemplate.find(query, org.bson.Document.class, "network_events")
-                .filter(doc -> {
-                    String docGeohash = doc.getString("geoHash");
-                    return geohash.equals(docGeohash);
-                })
-                .next()
-                .map(doc -> {
-                    String id = doc.getObjectId("_id").toHexString();
-                    log.info("Found: id={}", id);
-                    return id;
-                })
-                .switchIfEmpty(Mono.defer(() -> {
-                    log.info("Not found for hash: {}", geohash);
-                    return Mono.empty();
-                }));
+        return networkEventLookupService.byGeo(collectionName, latitude, longitude, javaProxied);
     }
 }

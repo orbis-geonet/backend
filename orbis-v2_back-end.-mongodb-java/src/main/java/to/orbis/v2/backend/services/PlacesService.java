@@ -215,8 +215,10 @@ public class PlacesService {
     }
 
     public Flux<Place> fillFromGooglePlaces(Optional<GeoJsonPoint> location, Optional<String> name, int size) {
-        // Google Places auto-import is disabled. Do not fetch and persist external places as a search fallback.
-        return Flux.empty();
+        return googlePlaceService.findPlaces(location, name, 1000, it -> true)
+                .filterWhen(place -> placesRepository.existsByGooglePlaceId(place.getGooglePlaceId()).map(b -> !b))
+                .take(size, true)
+                .flatMap(placesRepository::save);
     }
 
     public Mono<String> sharePlace(String placeKey) {
