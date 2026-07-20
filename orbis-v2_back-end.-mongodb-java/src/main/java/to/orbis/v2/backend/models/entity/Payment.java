@@ -34,6 +34,9 @@ public class Payment extends Entity {
     String invoiceStripeId;
     String stripeOrderId;
 
+    String paymentRef;
+    String txSignature;
+
     Instant timestamp;
     Instant createTimestamp;
 }

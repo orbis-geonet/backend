@@ -15,7 +15,7 @@ import to.orbis.v2.backend.models.UserSubscriptionStatus;
 import to.orbis.v2.backend.models.dto.StatisticFullSubscriptionDto;
 import to.orbis.v2.backend.models.dto.UserPurchaseDto;
 import to.orbis.v2.backend.models.dto.email.EmailType;
-import to.orbis.v2.backend.models.dto.stripe.StripeSecretDto;
+import to.orbis.v2.backend.models.dto.crypto.CryptoPaymentDto;
 import to.orbis.v2.backend.models.entity.Subscription;
 import to.orbis.v2.backend.models.entity.UserPurchase;
 import to.orbis.v2.backend.repositories.*;
@@ -35,8 +35,10 @@ public class PurchaseService extends UserPaymentService{
     private final StripeService stripeService;
     private final EmailSendingService emailSendingService;
     private final StatisticService statisticService;
+    private final CryptoPaymentIntentClient cryptoPaymentIntentClient;
+    private final PayoutWalletService payoutWalletService;
 
-    public PurchaseService(SubscriptionAggregationRepository subscriptionAggregationRepository, SubscriptionRepository subscriptionRepository, UserPurchaseAggregationRepository userPurchaseAggregationRepository, UserPurchaseRepository userPurchaseRepository, StripePaymentService stripePaymentService, UsersService usersService, GroupsService groupsService, StripeService stripeService, EmailSendingService emailSendingService, StatisticService statisticService) {
+    public PurchaseService(SubscriptionAggregationRepository subscriptionAggregationRepository, SubscriptionRepository subscriptionRepository, UserPurchaseAggregationRepository userPurchaseAggregationRepository, UserPurchaseRepository userPurchaseRepository, StripePaymentService stripePaymentService, UsersService usersService, GroupsService groupsService, StripeService stripeService, EmailSendingService emailSendingService, StatisticService statisticService, CryptoPaymentIntentClient cryptoPaymentIntentClient, PayoutWalletService payoutWalletService) {
         super(subscriptionAggregationRepository);
         this.subscriptionRepository = subscriptionRepository;
         this.userPurchaseAggregationRepository = userPurchaseAggregationRepository;
@@ -47,51 +49,40 @@ public class PurchaseService extends UserPaymentService{
         this.stripeService = stripeService;
         this.emailSendingService = emailSendingService;
         this.statisticService = statisticService;
+        this.cryptoPaymentIntentClient = cryptoPaymentIntentClient;
+        this.payoutWalletService = payoutWalletService;
     }
 
     @Transactional
-    public Mono<StripeSecretDto> buyPurchase(String subscriptionKey, Integer number, String userKey) {
+    public Mono<CryptoPaymentDto> buyPurchase(String subscriptionKey, Integer number, String userKey, String payerWallet) {
         return subscriptionRepository.findOneBySubscriptionKeyAndDeletedFalse(subscriptionKey)
                 .switchIfEmpty(getNoFoundError())
                 .flatMap(this::validatePurchaseBeforePayment)
                 .flatMap(purchase -> checkPurchaseCurrency(purchase, userKey))
                 .flatMap(subscription -> groupsService.findGroup(subscription.getGroupKey())
-                        .flatMap(group -> groupsService.addMember(group.getGroupKey(), userKey)
-                                .then(Mono.just(group)))
                         .flatMap(group -> {
                             if (Boolean.FALSE.equals(group.getIsSubscriptionActivate())) {
                                 return Mono.error(() -> new SubscriptionException("You cannot use this purchase, because group main admin didn't activate it."));
                             }
-                            return Mono.empty();
+                            return groupsService.addMember(group.getGroupKey(), userKey);
                         })
-                        .then(usersService.findUser(userKey, "User not found."))
-                        .flatMap(user -> {
-                            if (Objects.nonNull(user.getCustomerStripeId()) && !user.getCustomerStripeId().isEmpty()) {
-                                return Mono.just(user);
-                            } else {
-                                return stripeService.createCustomer(user.getUserKey())
-                                        .flatMap(customerUserStripeId -> {
-                                            user.setCustomerStripeId(customerUserStripeId);
-                                            return usersService.save(user);
-                                        });
-                            }
+                        .then(payoutWalletService.requirePayoutPubkey(subscription.getCreatedUserKey()))
+                        .flatMap(ownerWallet -> {
+                            int qty = number == null ? 1 : number;
+                            double priceUsd = subscription.getPrice().doubleValue() * qty;
+                            return cryptoPaymentIntentClient.createIntent(userKey, "purchase", subscriptionKey, qty, payerWallet, ownerWallet, priceUsd)
+                                    .flatMap(intent -> createUserPurchase(intent.getRef(), userKey, subscription, qty).thenReturn(intent));
                         })
-                        .flatMap(user -> usersService.findUser(subscription.getCreatedUserKey(), "User cannot be found")
-                                .flatMap(groupOwner -> stripePaymentService.buyPurchase(subscription, user, number))
-                                .flatMap(createPaymentResult -> createUserPurchase(createPaymentResult.getStripeId(), user.getUserKey(), subscription, number)
-                                        .flatMap(userPurchase -> stripePaymentService.createFirstPaymentAndReturnCustomerSecret(createPaymentResult, userPurchase.getUserPurchaseKey(), user.getCustomerStripeId(), subscription)
-                                        ))
-                        )
                 );
     }
 
-    private Mono<UserPurchase> createUserPurchase(String stripeId, String userKey, Subscription subscription, Integer number) {
+    private Mono<UserPurchase> createUserPurchase(String paymentRef, String userKey, Subscription subscription, Integer number) {
         var id = new ObjectId();
         var purchaseSubscription = UserPurchase.builder()
                 .userPurchaseKey(id.toHexString())
                 .userKey(userKey)
                 .purchaseKey(subscription.getSubscriptionKey())
-                .purchaseStripeId(stripeId)
+                .paymentRef(paymentRef)
                 .number(number)
                 .groupKey(subscription.getGroupKey())
                 .status(UserSubscriptionStatus.START_PAYMENT)

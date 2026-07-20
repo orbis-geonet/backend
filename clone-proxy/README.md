@@ -11,7 +11,7 @@ It is designed to run next to:
 ## What It Does
 
 - Reads Orbis Protocol events from Solana and caches them locally.
-- Watches local MongoDB changes and pushes batches back to the protocol.
+- Watches local MongoDB changes and commits constant-size manifests to the protocol.
 - Serves clone data to other registered clones.
 - Authenticates cross-clone requests using short-lived HMAC tokens.
 - Proxies selected requests to the Java backend using an internal API key.
@@ -73,7 +73,13 @@ Optional variables:
 | `SKIP_HISTORY=true` | `false` | Start from the current chain head instead of scanning historical events. |
 | `NO_CACHE=true` | `false` | Skip fetching and caching linked data during cross-clone retrieval. |
 | `OVERRIDE=true` | `false` | Re-create escrow accounts if a provider mismatch is detected. |
-| `AUTO_FETCH_EVENTS=true` | `false` | Automatically fetch event payloads from other clones when indexing. |
+| `AUTO_FETCH_EVENTS=true` | `false` | Eagerly fetch and pay for each committed manifest's full payload (mirror) instead of lazy per-request retrieval. |
+| `SELF_CONSUME=true` | `false` | Also index this clone's own manifests. For single-machine testing only. |
+| `PUBLIC_FLUSH_COUNT` | `200` | Public lane commits a manifest when this many changes are queued. |
+| `PUBLIC_FLUSH_AGE_MS` | `120000` | Public lane commits when the oldest queued change reaches this age. |
+| `DERIVED_FLUSH_COUNT` | `500` | Derived (noisy) lane queue-size threshold. |
+| `DERIVED_FLUSH_AGE_MS` | `600000` | Derived lane age threshold (defaults to 10 minutes). |
+| `MANIFEST_FLUSH_TICK_MS` | `15000` | How often the flush ticker re-checks the lane thresholds. |
 | `MONGO_TIMEOUT_MS` | `30000` | Mongo connection and socket timeout. |
 | `JAVA_BACKEND_TIMEOUT_MS` | `30000` | Timeout for calls forwarded to the Java backend. |
 | `EVENT_SYNC_STALE_MS` | `120000` | Time after which a syncing network event is treated as stale. |
@@ -218,11 +224,17 @@ The script prints the wallet file, owner public key, clone PDA, current URL, and
 | `npm run test:api` | Run API key tests. |
 | `npm run test:idl` | Fetch or inspect IDL data. |
 
-## Data Synchronization
+## Sync Flow (Manifest v2)
 
-The proxy keeps local MongoDB synchronized with protocol events. It also has an Extra Data system for linked objects such as feeds, users, and groups. See [Extra Data Flow](./extra-data-flow.md) for the detailed fetch-and-cache flow.
+Each clone is both a producer and a consumer.
 
-MongoDB change streams require a replica set. Without one, the proxy can still serve requests and index chain data, but it cannot watch local collection changes and push them back to the network.
+**Producer.** Mongo change streams feed a durable `network_outbox`, coalescing repeated edits per record. Records are split into two lanes — `public` (users, groups, posts, places, comments, follows) flushed fast, and `derived` (counters, checkins, stories, etc.) flushed lazily. On flush the clone writes the full documents to `network_batches`, a hashes-only index to `network_index_batches`, then commits a `sync_index_manifest` transaction carrying only `manifestHash` + `payloadHash`. That transaction is a **constant size** no matter how many records the batch covers.
+
+**Consumer.** The clone listens for other clones' `IndexManifestCommitted` events, fetches `/v3/index-batches/:id`, verifies `sha256 == manifestHash`, and materializes each entry into `network_events` with status `pending`. No documents are fetched yet — only the searchable hash index.
+
+**Retrieval.** When Java looks up a record and finds a matching `network_events` row, it forwards to the node, which fetches that record from the owning clone, pays through the streaming escrow, caches it locally, and marks the event `synced`. With `AUTO_FETCH_EVENTS=true` the clone instead eagerly fetches and pays for each committed batch's full payload.
+
+MongoDB change streams require a replica set. Without one the proxy still serves and indexes chain data, but cannot watch local changes to publish them. See [Extra Data Flow](./extra-data-flow.md) for linked-object fetch-and-cache details.
 
 ## Authentication Architecture
 

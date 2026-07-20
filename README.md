@@ -1,6 +1,6 @@
 ﻿# Orbis Backend Infrastructure
 
-Orbis is a geo-social, federated backend stack where users claim real-world places, form tribes, publish local content, and synchronize clone data through the Orbis Protocol on Solana.
+Orbis is a geo-social, federated backend stack where users check in to real-world places, form groups, publish local content, and synchronize clone data through the Orbis Protocol on Solana.
 
 This repository contains the backend services required to run an Orbis deployment or clone node.
 
@@ -40,6 +40,17 @@ External services used by a full deployment:
 - AWS SES, if email delivery is enabled
 - Branch and Instagram integrations, if those product features are enabled
 
+## Open Source Safety Checklist
+
+Before publishing or deploying from this repository:
+
+- Replace all committed production credentials with placeholders.
+- Rotate any secret that has ever been committed, shared, or copied into logs.
+- Do not commit Firebase service account files.
+- Do not commit Solana wallet JSON files.
+- Do not commit `.env` files or production YAML files containing real credentials.
+- Use `.env.example` and `application-*.example.yaml` files for documentation.
+- Review Docker Compose files for hardcoded secrets before publishing.
 
 ## Requirements
 

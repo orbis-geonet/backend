@@ -19,7 +19,7 @@ pub mod ix_sysvar {
     anchor_lang::declare_id!("Sysvar1nstructions1111111111111111111111111");
 }
 
-declare_id!("2FrLL3KDojR89jFEp2doriVtAjfXB3mN8tTxbK3VUQBX");
+declare_id!("x2HARL2kBx2jVHtgWvf8sX8zbZ3sBAvtHJeg8AgosqR");
 
 #[program]
 pub mod orbis_protocol {
@@ -108,16 +108,19 @@ pub mod orbis_protocol {
         Ok(())
     }
 
-    pub fn sync_collection_batch(
-        ctx: Context<SyncCollectionBatch>,
+    pub fn sync_index_manifest(
+        ctx: Context<SyncIndexManifest>,
         packet_type: u8,
         batch_id: u32,
-        collection_roots: Vec<CollectionRoot>,
-        events: Vec<BatchEvent>,
-        batch_pointer: String,
+        manifest_hash: [u8; 32],
+        payload_hash: [u8; 32],
+        manifest_pointer: String,
+        entry_count: u32,
+        action_count: u32,
+        from_ts: i64,
+        to_ts: i64,
     ) -> Result<()> {
-        require!(collection_roots.len() <= 32, ErrorCode::BatchTooLarge);
-        require!(events.len() <= 200, ErrorCode::BatchTooLarge);
+        require!(manifest_pointer.len() <= 200, ErrorCode::BatchTooLarge);
 
         let merkle_tree = &ctx.accounts.merkle_tree;
         let config = &ctx.accounts.config;
@@ -137,18 +140,12 @@ pub mod orbis_protocol {
         let mut leaf_data = Vec::new();
         leaf_data.push(packet_type);
         leaf_data.extend_from_slice(&batch_id.to_le_bytes());
-        for cr in collection_roots.iter() {
-            leaf_data.push(cr.collection_id);
-            leaf_data.extend_from_slice(&cr.root);
-        }
-        for ev in events.iter() {
-            leaf_data.push(ev.collection_id);
-            leaf_data.push(ev.action);
-            leaf_data.push(ev.field_mask);
-            leaf_data.extend_from_slice(&ev.key_hash);
-            leaf_data.extend_from_slice(&ev.timestamp);
-            leaf_data.extend_from_slice(&ev.opt_data);
-        }
+        leaf_data.extend_from_slice(&manifest_hash);
+        leaf_data.extend_from_slice(&payload_hash);
+        leaf_data.extend_from_slice(&entry_count.to_le_bytes());
+        leaf_data.extend_from_slice(&action_count.to_le_bytes());
+        leaf_data.extend_from_slice(&from_ts.to_le_bytes());
+        leaf_data.extend_from_slice(&to_ts.to_le_bytes());
 
         let leaf_hash = solana_sha256_hasher::hash(&leaf_data).to_bytes();
 
@@ -182,12 +179,16 @@ pub mod orbis_protocol {
             signer_seeds,
         )?;
 
-        emit!(CollectionBatchSynced {
+        emit!(IndexManifestCommitted {
             packet_type,
             batch_id,
-            collection_roots,
-            events,
-            batch_pointer,
+            manifest_hash,
+            payload_hash,
+            manifest_pointer,
+            entry_count,
+            action_count,
+            from_ts,
+            to_ts,
             provider: ctx.accounts.clone_signer.key(),
         });
 
@@ -449,6 +450,85 @@ pub mod orbis_protocol {
         ctx.accounts.clone_info.is_genesis = false;
         Ok(())
     }
+
+    /// Split a single ORBIS payment atomically: 90% tribe owner, 7% clone
+    /// operator, 3% treasury. The payer (buyer) is the only signer — we never
+    /// custody funds. `payment_ref` is the off-chain correlation/idempotency key
+    /// echoed in the emitted event.
+    pub fn pay_tribe(ctx: Context<PayTribe>, amount: u64, payment_ref: [u8; 32]) -> Result<()> {
+        const CLONE_BPS: u64 = 700;
+        const TREASURY_BPS: u64 = 300;
+
+        require!(amount > 0, ErrorCode::ArithmeticError);
+
+        let clone_cut = amount
+            .checked_mul(CLONE_BPS)
+            .ok_or(error!(ErrorCode::ArithmeticError))?
+            / 10_000;
+        let treasury_cut = amount
+            .checked_mul(TREASURY_BPS)
+            .ok_or(error!(ErrorCode::ArithmeticError))?
+            / 10_000;
+        // Remainder to the owner so no base units are lost to integer rounding (~90%).
+        let owner_cut = amount
+            .checked_sub(clone_cut)
+            .ok_or(error!(ErrorCode::ArithmeticError))?
+            .checked_sub(treasury_cut)
+            .ok_or(error!(ErrorCode::ArithmeticError))?;
+
+        // 90% -> tribe owner
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.key(),
+                Transfer {
+                    from: ctx.accounts.payer_token_account.to_account_info(),
+                    to: ctx.accounts.tribe_owner_token_account.to_account_info(),
+                    authority: ctx.accounts.payer.to_account_info(),
+                },
+            ),
+            owner_cut,
+        )?;
+
+        // 7% -> clone operator
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.key(),
+                Transfer {
+                    from: ctx.accounts.payer_token_account.to_account_info(),
+                    to: ctx.accounts.clone_token_account.to_account_info(),
+                    authority: ctx.accounts.payer.to_account_info(),
+                },
+            ),
+            clone_cut,
+        )?;
+
+        // 3% -> treasury
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.key(),
+                Transfer {
+                    from: ctx.accounts.payer_token_account.to_account_info(),
+                    to: ctx.accounts.treasury_token_account.to_account_info(),
+                    authority: ctx.accounts.payer.to_account_info(),
+                },
+            ),
+            treasury_cut,
+        )?;
+
+        emit!(TribePaymentMade {
+            payer: ctx.accounts.payer.key(),
+            payment_ref,
+            amount,
+            owner_token_account: ctx.accounts.tribe_owner_token_account.key(),
+            clone_token_account: ctx.accounts.clone_token_account.key(),
+            treasury_token_account: ctx.accounts.treasury_token_account.key(),
+            owner_cut,
+            clone_cut,
+            treasury_cut,
+        });
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -543,7 +623,7 @@ pub struct UpdateCloneBaseUrl<'info> {
 }
 
 #[derive(Accounts)]
-pub struct SyncCollectionBatch<'info> {
+pub struct SyncIndexManifest<'info> {
     /// CHECK: address is constrained to config.merkle_tree; validated by compression program
     #[account(mut, address = config.merkle_tree)]
     pub merkle_tree: AccountInfo<'info>,
@@ -832,28 +912,60 @@ pub enum ErrorCode {
     BatchTooLarge,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct CollectionRoot {
-    pub collection_id: u8,
-    pub root: [u8; 32],
+#[event]
+pub struct IndexManifestCommitted {
+    pub packet_type: u8,
+    pub batch_id: u32,
+    pub manifest_hash: [u8; 32],
+    pub payload_hash: [u8; 32],
+    pub manifest_pointer: String,
+    pub entry_count: u32,
+    pub action_count: u32,
+    pub from_ts: i64,
+    pub to_ts: i64,
+    pub provider: Pubkey,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct BatchEvent {
-    pub collection_id: u8,
-    pub action: u8,
-    pub field_mask: u8,
-    pub key_hash: [u8; 8],
-    pub timestamp: [u8; 4],
-    pub opt_data: Vec<u8>,
+#[derive(Accounts)]
+pub struct PayTribe<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(
+        mut,
+        constraint = payer_token_account.owner == payer.key() @ ErrorCode::InvalidTokenAccount,
+        constraint = payer_token_account.mint == config.orbis_mint @ ErrorCode::InvalidTokenAccount,
+    )]
+    pub payer_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        constraint = tribe_owner_token_account.mint == config.orbis_mint @ ErrorCode::InvalidTokenAccount,
+    )]
+    pub tribe_owner_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        constraint = clone_token_account.mint == config.orbis_mint @ ErrorCode::InvalidTokenAccount,
+    )]
+    pub clone_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        constraint = treasury_token_account.owner == config.treasury @ ErrorCode::InvalidTokenAccount,
+        constraint = treasury_token_account.mint == config.orbis_mint @ ErrorCode::InvalidTokenAccount,
+    )]
+    pub treasury_token_account: Account<'info, TokenAccount>,
+    #[account(seeds = [b"global_config"], bump)]
+    pub config: Account<'info, GlobalConfig>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[event]
-pub struct CollectionBatchSynced {
-    pub packet_type: u8,
-    pub batch_id: u32,
-    pub collection_roots: Vec<CollectionRoot>,
-    pub events: Vec<BatchEvent>,
-    pub batch_pointer: String,
-    pub provider: Pubkey,
+pub struct TribePaymentMade {
+    pub payer: Pubkey,
+    pub payment_ref: [u8; 32],
+    pub amount: u64,
+    pub owner_token_account: Pubkey,
+    pub clone_token_account: Pubkey,
+    pub treasury_token_account: Pubkey,
+    pub owner_cut: u64,
+    pub clone_cut: u64,
+    pub treasury_cut: u64,
 }

@@ -24,6 +24,7 @@ public class UserPurchase extends Entity {
     String purchaseKey;
     String groupKey;
     String purchaseStripeId;
+    String paymentRef;
     UserSubscriptionStatus status;
     String errorMessage;
     Integer number;

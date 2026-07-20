@@ -54,6 +54,7 @@ public class UsersController {
     GroupMapper groupMapper;
     UserPictureMapper userPictureMapper;
     ReactiveMongoTemplate mongoTemplate;
+    to.orbis.v2.backend.services.NetworkEventLookupService networkEventLookupService;
 
     @SneakyThrows
     @GetMapping("/me")
@@ -573,39 +574,7 @@ public class UsersController {
     }
 
     private Mono<String> getNetworkEventIdByKey(String key, String collectionName, boolean javaProxied) {
-        if (javaProxied) {
-            log.info("[network_events] Skipping key lookup: collection={}, reason=javaProxied", collectionName);
-            return Mono.empty();
-        }
-        if (key == null) {
-            log.info("[network_events] Skipping key lookup: collection={}, reason=null-key", collectionName);
-            return Mono.empty();
-        }
-        String keyHash = hashKeyFull(key);
-        log.info("[network_events] Checking key lookup: collection={}, status=pending, key={}, keyHash={}",
-                collectionName, key, keyHash);
-        Query query = Query.query(Criteria.where("collectionName").is(collectionName).and("status")
-                        .is("pending").and("keyHash").is(keyHash))
-                .with(Sort.by(Sort.Direction.DESC, "timestamp"));
-
-        return mongoTemplate.find(query, org.bson.Document.class, "network_events")
-                .next()
-                .doOnNext(doc -> log.info(
-                        "[network_events] Found key lookup match: collection={}, keyHash={}, eventId={}, provider={}, status={}, timestamp={}, cacheStatus={}, cacheError={}",
-                        collectionName,
-                        keyHash,
-                        doc.getObjectId("_id") != null ? doc.getObjectId("_id").toHexString() : null,
-                        doc.getString("provider"),
-                        doc.getString("status"),
-                        doc.get("timestamp"),
-                        doc.getString("cacheStatus"),
-                        doc.getString("cacheError")))
-                .map(doc -> doc.getObjectId("_id").toHexString())
-                .switchIfEmpty(Mono.defer(() -> {
-                    log.info("[network_events] No key lookup match: collection={}, status=pending, keyHash={}",
-                            collectionName, keyHash);
-                    return Mono.empty();
-                }));
+        return networkEventLookupService.byKey(collectionName, key, javaProxied);
     }
 
     private String hashKeyFull(String key) {
@@ -628,30 +597,6 @@ public class UsersController {
     }
 
     private Mono<String> getNetworkEventIdByCollection(String collectionName, boolean javaProxied) {
-        if (javaProxied) {
-            log.info("[network_events] Skipping collection lookup: collection={}, reason=javaProxied", collectionName);
-            return Mono.empty();
-        }
-        log.info("[network_events] Checking collection lookup: collection={}, status=pending", collectionName);
-        Query query = Query.query(Criteria.where("collectionName").is(collectionName).and("status")
-                        .is("pending"))
-                .with(Sort.by(Sort.Direction.DESC, "timestamp"));
-
-        return mongoTemplate.find(query, org.bson.Document.class, "network_events")
-                .next()
-                .doOnNext(doc -> log.info(
-                        "[network_events] Found collection lookup match: collection={}, eventId={}, provider={}, status={}, timestamp={}, cacheStatus={}, cacheError={}",
-                        collectionName,
-                        doc.getObjectId("_id") != null ? doc.getObjectId("_id").toHexString() : null,
-                        doc.getString("provider"),
-                        doc.getString("status"),
-                        doc.get("timestamp"),
-                        doc.getString("cacheStatus"),
-                        doc.getString("cacheError")))
-                .map(doc -> doc.getObjectId("_id").toHexString())
-                .switchIfEmpty(Mono.defer(() -> {
-                    log.info("[network_events] No collection lookup match: collection={}, status=pending", collectionName);
-                    return Mono.empty();
-                }));
+        return networkEventLookupService.byCollection(collectionName, javaProxied);
     }
 }

@@ -65,7 +65,7 @@ services:
       - "8080:8080"
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /app/secrets.json
-      ORBIS_API_SECRET: 'test_key'
+      ORBIS_API_SECRET: ${ORBIS_API_SECRET:-change-me}
       SPRING_PROFILES_ACTIVE: prod-local
       SPRING_DATA_MONGODB_URI: "mongodb://orbis-mongo:27017/?retryWrites=true"
       NODEJS_WORKER_URL: "http://orbis-clone-proxy:3000"

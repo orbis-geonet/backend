@@ -8,4 +8,7 @@ import org.bson.types.ObjectId;
 @FieldNameConstants(asEnum = true)
 public abstract class Entity {
     ObjectId id;
+    String networkActionId;
+    String networkActionType;
+    Integer networkPriority;
 }

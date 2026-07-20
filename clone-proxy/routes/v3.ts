@@ -6,6 +6,7 @@ import { BN } from "bn.js";
 import { serialize } from "@dao-xyz/borsh";
 import { getCanonicalUserState } from "../models/borsh-schemas.js";
 import { PROGRAM_ID } from "../config.js";
+import { hashKeyFull, hashShort, geoHashFromLatLon } from "../network/manifest.js";
 import { calculateFee, clearVoucherTimer } from "../network/payment.js";
 import nacl from "tweetnacl";
 import { createHmac } from "crypto";
@@ -680,6 +681,50 @@ export function registerV3Routes(app: Express, db: any, payer: Keypair, connecti
         } catch (e: any) {
             res.status(500).json({ error: e.message });
         }
+    });
+
+    app.get("/v3/index-batches/:batchId", async (req, res) => {
+        const provider = (req.query.provider as string) || payer.publicKey.toBase58();
+        const batchId = Number(req.params.batchId);
+        if (!Number.isInteger(batchId)) return res.status(400).json({ error: "Invalid batch id" });
+        const doc = await db.collection("network_index_batches").findOne({ provider, batchId });
+        if (!doc?.manifestJson) return res.status(404).json({ error: "manifest not found" });
+        res.setHeader("Content-Type", "application/json");
+        return res.send(doc.manifestJson);
+    });
+
+    app.get("/debug/network-lookup", async (req, res) => {
+        if ((req.headers["x-master-key"] as string) !== process.env.ORBIS_API_SECRET) {
+            return res.status(401).json({ error: "master key required" });
+        }
+        const collection = req.query.collection as string;
+        const type = (req.query.type as string) || "key";
+        const value = req.query.value as string;
+        const lat = req.query.lat != null ? parseFloat(req.query.lat as string) : undefined;
+        const lon = req.query.lon != null ? parseFloat(req.query.lon as string) : undefined;
+        if (!collection) return res.status(400).json({ error: "collection required" });
+
+        let field: string;
+        let hashValue: string;
+        switch (type) {
+            case "key": field = "keyHash"; hashValue = hashKeyFull(value); break;
+            case "secondary": field = "secondaryHash"; hashValue = hashShort(value); break;
+            case "name": field = "nameHash"; hashValue = hashShort(value); break;
+            case "parent": field = "parentHash"; hashValue = hashShort(value); break;
+            case "parent2": field = "parentHash2"; hashValue = hashShort(value); break;
+            case "author":
+            case "email": field = "authorHash"; hashValue = hashShort(value); break;
+            case "geo": field = "geoHash"; hashValue = (lat != null && lon != null) ? geoHashFromLatLon(lat, lon) : ""; break;
+            default: return res.status(400).json({ error: `unknown type ${type}` });
+        }
+
+        const ev = await db.collection("network_events")
+            .find({ collectionName: collection, status: "pending", [field]: hashValue })
+            .sort({ timestamp: -1 })
+            .limit(1)
+            .next();
+        if (!ev) return res.json({ found: false, field, hashValue });
+        return res.json({ found: true, network_event_id: ev._id.toString(), field, hashValue, event: ev });
     });
 
 }

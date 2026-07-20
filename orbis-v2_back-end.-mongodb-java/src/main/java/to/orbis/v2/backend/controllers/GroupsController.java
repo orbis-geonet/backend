@@ -65,6 +65,7 @@ public class GroupsController {
         UserMapper userMapper;
         PostMapper postMapper;
         ReactiveMongoTemplate mongoTemplate;
+        to.orbis.v2.backend.services.NetworkEventLookupService networkEventLookupService;
 
         @GetMapping
         public Mono<List<ExtendedGroupDto>> getGroups(
@@ -548,65 +549,11 @@ public class GroupsController {
         }
 
         private Mono<String> getNetworkEventIdByKey(String key, String collectionName, boolean javaProxied) {
-                if (javaProxied || key == null) {
-                        return Mono.empty();
-                }
-                log.info("Hash produced: {}", key);
-
-                Query query = Query.query(Criteria.where("collectionName").is(collectionName).and("status")
-                                .is("pending").and("keyHash").is(key))
-                                .with(Sort.by(Sort.Direction.DESC, "timestamp"));
-
-                log.info("Query: {}", query);
-
-                return mongoTemplate.find(query, org.bson.Document.class, "network_events")
-                                .next()
-                                .map(doc -> {
-                                        String id = doc.getObjectId("_id").toHexString();
-                                        log.info("Found: id={}", id);
-                                        return id;
-                                })
-                                .switchIfEmpty(Mono.defer(() -> {
-                                        log.info("Not found for hash: {}", key);
-                                        return Mono.empty();
-                                }));
+                return networkEventLookupService.byKey(collectionName, key, javaProxied);
         }
 
         private Mono<String> getNetworkEventId(Double latitude, Double longitude, String collectionName,
                         boolean javaProxied) {
-                if (javaProxied || latitude == null || longitude == null) {
-                        return Mono.empty();
-                }
-                String geohash = GeoHashUtils.geoHashEncode3Bytes(latitude, longitude);
-                log.info("Checking for network_event with geohash: {} and collection: {}", geohash, collectionName);
-
-                Query query = Query.query(Criteria.where("collectionName").is(collectionName).and("status")
-                                .is("pending"))
-                                .with(Sort.by(Sort.Direction.DESC, "timestamp"));
-
-                log.info("Executing query {} on collection network_events", query);
-
-                return mongoTemplate.find(query, org.bson.Document.class, "network_events")
-                                .doOnNext(doc -> log.info("Found pending event: id={}, geoHash={}, collectionName={}",
-                                                doc.getObjectId("_id"), doc.getString("geoHash"),
-                                                doc.getString("collectionName")))
-                                .filter(doc -> {
-                                        String docGeohash = doc.getString("geoHash");
-                                        boolean matches = geohash.equals(docGeohash);
-                                        log.info("Geohash comparison: input='{}' doc='{}' matches={}", geohash,
-                                                        docGeohash, matches);
-                                        return matches;
-                                })
-                                .next()
-                                .map(doc -> {
-                                        String id = doc.getObjectId("_id").toHexString();
-                                        log.info("Matched network_event ID: {}", id);
-                                        return id;
-                                })
-                                .switchIfEmpty(Mono.defer(() -> {
-                                        log.info("No matching network_event discovered for geohash: {}. Check if the document exists with status 'pending' and correct 'collectionName'.",
-                                                        geohash);
-                                        return Mono.empty();
-                                }));
+                return networkEventLookupService.byGeo(collectionName, latitude, longitude, javaProxied);
         }
 }

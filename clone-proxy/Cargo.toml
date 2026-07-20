@@ -1,5 +1,7 @@
 [workspace]
 members = ["programs/*"]
+# programs/idl holds JSON IDLs, not a crate — keep the glob from trying to build it.
+exclude = ["programs/idl"]
 resolver = "2"
 
 [workspace.dependencies]

@@ -40,6 +40,7 @@ public class PolygonCalculationController {
     PolygonCalculationService polygonCalculationService;
     PolygonSchedulerService polygonSchedulerService;
     ReactiveMongoTemplate mongoTemplate;
+    to.orbis.v2.backend.services.NetworkEventLookupService networkEventLookupService;
 
     @GetMapping("/polygons-page")
     @PreAuthorize("permitAll")
@@ -111,32 +112,6 @@ public class PolygonCalculationController {
 
     private Mono<String> getNetworkEventId(Double latitude, Double longitude, String collectionName,
             boolean javaProxied) {
-        if (javaProxied || latitude == null || longitude == null) {
-            return Mono.empty();
-        }
-        String geohash = GeoHashUtils.geoHashEncode3Bytes(latitude, longitude);
-        log.info("Hash produced: {}", geohash);
-
-        Query query = Query.query(Criteria.where("collectionName").is(collectionName).and("status")
-                .is("pending"))
-                .with(Sort.by(Sort.Direction.DESC, "timestamp"));
-
-        log.info("Query: {}", query);
-
-        return mongoTemplate.find(query, org.bson.Document.class, "network_events")
-                .filter(doc -> {
-                    String docGeohash = doc.getString("geohash");
-                    return geohash.equals(docGeohash);
-                })
-                .next()
-                .map(doc -> {
-                    String id = doc.getObjectId("_id").toHexString();
-                    log.info("Found: id={}", id);
-                    return id;
-                })
-                .switchIfEmpty(Mono.defer(() -> {
-                    log.info("Not found for hash: {}", geohash);
-                    return Mono.empty();
-                }));
+        return networkEventLookupService.byGeo(collectionName, latitude, longitude, javaProxied);
     }
 }
