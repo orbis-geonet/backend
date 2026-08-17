@@ -7,9 +7,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 import reactor.core.publisher.Mono;
 import to.orbis.v2.backend.configuration.OpenMapConfiguration;
 import to.orbis.v2.backend.mappers.OpenMapMapper;
-import to.orbis.v2.backend.models.dto.openstreetmap.OpenMapPlace;
 import to.orbis.v2.backend.models.dto.openstreetmap.PhotonPlace;
 import to.orbis.v2.backend.models.dto.openstreetmap.PlaceInfoDto;
+import java.time.Duration;
 import java.util.Optional;
 
 @Service
@@ -50,8 +50,10 @@ public class PlacesInfoService {
                 .uri(url)
                 .retrieve()
                 .bodyToMono(PhotonPlace.class)
-                .map(r -> r.getFeatures().get(0).getProperties())
+                .flatMap(r -> r.getFeatures() == null || r.getFeatures().isEmpty()
+                        ? Mono.empty()
+                        : Mono.just(r.getFeatures().get(0).getProperties()))
                 .map(openMapMapper::toPlaceInfo)
-                .retry(5);
+                .timeout(Duration.ofSeconds(3));
     }
 }

@@ -36,6 +36,11 @@ public class Payment extends Entity {
 
     String paymentRef;
     String txSignature;
+    String solscanUrl;
+    String solanaCluster;
+    String ownerCutOrbis;
+    String cloneCutOrbis;
+    String treasuryCutOrbis;
 
     Instant timestamp;
     Instant createTimestamp;

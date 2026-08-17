@@ -44,10 +44,11 @@ public class UsersSubscriptionController {
     public Mono<CryptoPaymentDto> subscribe(
             @PathVariable String subscriptionKey,
             @RequestParam String payerWallet,
+            @RequestParam(defaultValue = "ORBIS") String coin,
             Authentication authentication
     ) {
-        log.info("subscribe: subscriptionKey: {}, userKey: {}, payerWallet: {}", subscriptionKey, authentication.getName(), payerWallet);
-        return subscriptionsService.subscribe(subscriptionKey, authentication.getName(), payerWallet);
+        log.info("subscribe: subscriptionKey: {}, userKey: {}, payerWallet: {}, coin: {}", subscriptionKey, authentication.getName(), payerWallet, coin);
+        return subscriptionsService.subscribe(subscriptionKey, authentication.getName(), payerWallet, coin);
     }
 
     @PreAuthorize("isAuthenticated")

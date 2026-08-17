@@ -37,7 +37,8 @@ async function main() {
     const program = new anchor.Program(idl as any, provider);
 
     const BASE_URL = process.env.CLONE_BASE_URL || "http://localhost:3000";
-    const ORBIS_MINT = new PublicKey(process.env.ORBIS_MINT || "GkEwz1aZTTmJ4Xao3WfA3UEhBhPGrfZQ6VSMQ3xcQzfp");
+    if (!process.env.ORBIS_MINT) throw new Error("ORBIS_MINT not set");
+    const ORBIS_MINT = new PublicKey(process.env.ORBIS_MINT);
 
     const [configPda] = PublicKey.findProgramAddressSync(
         [Buffer.from("global_config")],

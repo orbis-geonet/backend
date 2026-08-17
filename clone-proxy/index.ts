@@ -178,7 +178,7 @@ function printStartupBanner(opts: {
         `    [${onOff(opts.skipHistory)}]  SKIP_HISTORY          forward-only listener`,
         `    [${onOff(opts.register)}]  REGISTER              register clone on start`,
         `    [${onOff(opts.dryRun)}]  DRY_RUN               validate then exit`,
-        `    [${onOff(opts.payments)}]  tribe payments        (DEVNET_* configured)`,
+        `    [${onOff(opts.payments)}]  tribe payments        (PAYMENTS_* configured)`,
         bar,
         "",
     ];
@@ -331,7 +331,7 @@ async function main() {
     if (paymentsEnabled()) {
         startTribePaymentsListener(db);
     } else {
-        log.info("Tribe payments disabled (set DEVNET_RPC_URL + DEVNET_PAYMENTS_PROGRAM_ID to enable)");
+        log.info("Tribe payments disabled (set PAYMENTS_RPC_URL + PAYMENTS_PROGRAM_ID to enable)");
     }
 
     const app = express();

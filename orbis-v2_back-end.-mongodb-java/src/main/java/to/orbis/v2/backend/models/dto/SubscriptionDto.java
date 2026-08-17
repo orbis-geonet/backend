@@ -7,8 +7,10 @@ import lombok.experimental.FieldNameConstants;
 import to.orbis.v2.backend.models.Currency;
 import to.orbis.v2.backend.models.SubscriptionInterval;
 import to.orbis.v2.backend.models.SubscriptionType;
+import to.orbis.v2.backend.models.UserSubscriptionStatus;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 
 @Data
@@ -29,5 +31,9 @@ public class SubscriptionDto {
     List<String> benefit;
     Boolean isSubscriber;
     List<String> imagesName;
+    Instant startDate;
+    Instant endDate;
+    Instant timestamp;
+    UserSubscriptionStatus status;
 
 }

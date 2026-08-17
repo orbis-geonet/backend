@@ -64,7 +64,7 @@ public class SubscriptionAggregationRepository {
                         unwind(lookupSubscription),
                         match(Criteria.where(AggregationUtils.makeMatchName(lookupSubscription, Subscription.Fields.currency.name())).ne(currency.name())
                                 .and(UserSubscription.Fields.userKey.name()).is(userKey)
-                                .and(UserSubscription.Fields.status.name()).is(UserSubscriptionStatus.ACTIVATED)),
+                                .and(UserSubscription.Fields.status.name()).in(UserSubscriptionStatus.ACTIVATED, UserSubscriptionStatus.DEACTIVATED_REQUEST)),
                         count().as("result")
                 ),
                         AggregationUtils.getCollectionName(UserSubscription.class, false),
@@ -97,6 +97,9 @@ public class SubscriptionAggregationRepository {
     public Flux<SubscriptionDto> findAll(String groupKey, String userKey, PageRequest pageable) {
         var subLookup = "subscribers";
         var subCountLookup = "subCount";
+        var userSubscriptionLookup = "userSubscriptionState";
+        var purchaseLookup = "purchases";
+        var purchaseCountLookup = "purchaseCount";
         return mongoTemplate.aggregate(
                 newAggregation(
                     new FreeFormOperation(LOOK_UP, String.format(
@@ -105,7 +108,7 @@ public class SubscriptionAggregationRepository {
                                     "            pipeline: [\n" +
                                     "                { $match: { $expr: { $eq: [ \"$$sub_key\", \"$%s\" ] } } },\n" +
                                     "                { $facet: { \"%s\": [\n" +
-                                    "                            { $match: { $expr: { $and: [ { $eq: [\"$%s\", \"%s\"] }, { $eq: [\"$%s\", \"%s\"] } ] } }, },\n" +
+                                    "                            { $match: { $expr: { $and: [ { $in: [\"$%s\", [\"%s\", \"%s\"]] }, { $eq: [\"$%s\", \"%s\"] } ] } }, },\n" +
                                     "                            { \"$group\" : {\"_id\": \"count\", \"count\": {\"$sum\": 1}}}\n" +
                                     "                        ]}}\n" +
                                     "            ],\n" +
@@ -116,15 +119,75 @@ public class SubscriptionAggregationRepository {
                             subCountLookup,
                             UserSubscription.Fields.status.name(),
                             UserSubscriptionStatus.ACTIVATED,
+                            UserSubscriptionStatus.DEACTIVATED_REQUEST,
                             UserSubscription.Fields.userKey.name(),
                             userKey,
                             subLookup)),
                         unwind(subLookup),
                         unwind(String.format("%s.%s.count", subLookup, subCountLookup), true),
+                        new FreeFormOperation(LOOK_UP, String.format(
+                                "{from: \"%s\",\n" +
+                                        "            let: { \"purchase_key\": \"$%s\"},\n" +
+                                        "            pipeline: [\n" +
+                                        "                { $match: { $expr: { $eq: [ \"$$purchase_key\", \"$%s\" ] } } },\n" +
+                                        "                { $facet: { \"%s\": [\n" +
+                                        "                            { $match: { $expr: { $and: [ { $eq: [\"$%s\", \"%s\"] }, { $eq: [\"$%s\", \"%s\"] } ] } }, },\n" +
+                                        "                            { \"$group\" : {\"_id\": \"count\", \"count\": {\"$sum\": 1}}}\n" +
+                                        "                        ]}}\n" +
+                                        "            ],\n" +
+                                        "            as: \"%s\"}",
+                                AggregationUtils.getCollectionName(UserPurchase.class, false),
+                                Subscription.Fields.subscriptionKey.name(),
+                                UserPurchase.Fields.purchaseKey.name(),
+                                purchaseCountLookup,
+                                UserPurchase.Fields.status.name(),
+                                UserSubscriptionStatus.FINISHED,
+                                UserPurchase.Fields.userKey.name(),
+                                userKey,
+                                purchaseLookup)),
+                        unwind(purchaseLookup),
+                        unwind(String.format("%s.%s.count", purchaseLookup, purchaseCountLookup), true),
+                        new FreeFormOperation(LOOK_UP, String.format(
+                                "{from: \"%s\",\n" +
+                                        "            let: { \"sub_key\": \"$%s\"},\n" +
+                                        "            pipeline: [\n" +
+                                        "                { $match: { $expr: { $and: [ { $eq: [ \"$$sub_key\", \"$%s\" ] }, { $eq: [\"$%s\", \"%s\"] }, { $in: [\"$%s\", [\"%s\", \"%s\", \"%s\", \"%s\"]] } ] } } },\n" +
+                                        "                { $sort: { \"%s\": -1 } },\n" +
+                                        "                { $limit: 1 }\n" +
+                                        "            ],\n" +
+                                        "            as: \"%s\"}",
+                                AggregationUtils.getCollectionName(UserSubscription.class, false),
+                                UserSubscription.Fields.subscriptionKey.name(),
+                                Subscription.Fields.subscriptionKey.name(),
+                                UserSubscription.Fields.userKey.name(),
+                                userKey,
+                                UserSubscription.Fields.status.name(),
+                                UserSubscriptionStatus.ACTIVATED,
+                                UserSubscriptionStatus.DEACTIVATED_REQUEST,
+                                UserSubscriptionStatus.DEACTIVATED,
+                                UserSubscriptionStatus.START_PAYMENT,
+                                UserSubscription.Fields.timestamp.name(),
+                                userSubscriptionLookup)),
+                        unwind(userSubscriptionLookup, true),
                         new FreeFormOperation(ADD_FIELDS, String.format(
-                                "{\"%s\": { \"$ne\": [\"$%s\", [] ]}}",
+                                "{\"%s\": { \"$or\": [ { \"$ne\": [\"$%s\", [] ]}, { \"$and\": [ { \"$eq\": [\"$%s\", \"%s\"] }, { \"$ne\": [\"$%s\", [] ]} ]} ]}, \"%s\": \"$%s.%s\", \"%s\": \"$%s.%s\", \"%s\": \"$%s.%s\", \"%s\": \"$%s.%s\"}",
                                 SubscriptionDto.Fields.isSubscriber.name(),
-                                String.format("%s.%s", subLookup, subCountLookup)
+                                String.format("%s.%s", subLookup, subCountLookup),
+                                Subscription.Fields.type.name(),
+                                SubscriptionType.ONE_TIME.name(),
+                                String.format("%s.%s", purchaseLookup, purchaseCountLookup),
+                                SubscriptionDto.Fields.status.name(),
+                                userSubscriptionLookup,
+                                UserSubscription.Fields.status.name(),
+                                SubscriptionDto.Fields.startDate.name(),
+                                userSubscriptionLookup,
+                                UserSubscription.Fields.startDate.name(),
+                                SubscriptionDto.Fields.endDate.name(),
+                                userSubscriptionLookup,
+                                UserSubscription.Fields.endDate.name(),
+                                SubscriptionDto.Fields.timestamp.name(),
+                                userSubscriptionLookup,
+                                UserSubscription.Fields.timestamp.name()
                         )),
                         match(Criteria.where(Subscription.Fields.groupKey.name()).is(groupKey)
                                 .and(Subscription.Fields.deleted.name()).is(false)),
@@ -137,8 +200,7 @@ public class SubscriptionAggregationRepository {
     }
 
     private Criteria getCriteria(String userKey, String groupKey) {
-        var criteria = Criteria.where(UserSubscription.Fields.userKey.name()).is(userKey)
-                .and(UserSubscription.Fields.status.name()).is(UserSubscriptionStatus.ACTIVATED);
+        var criteria = Criteria.where(UserSubscription.Fields.userKey.name()).is(userKey);
         if (Objects.nonNull(groupKey) && !groupKey.isEmpty()) {
             criteria.and(UserSubscription.Fields.groupKey.name()).is(groupKey);
         }
@@ -146,7 +208,7 @@ public class SubscriptionAggregationRepository {
     }
 
     private Criteria getMembersCriteria(String lookupUserSubscription, String groupKey, String subscriptionKey) {
-        var criteria = Criteria.where(AggregationUtils.makeMatchName(lookupUserSubscription, UserSubscription.Fields.status.name())).is(UserSubscriptionStatus.ACTIVATED)
+        var criteria = Criteria.where(AggregationUtils.makeMatchName(lookupUserSubscription, UserSubscription.Fields.status.name())).in(UserSubscriptionStatus.ACTIVATED, UserSubscriptionStatus.DEACTIVATED_REQUEST)
                 .and(AggregationUtils.makeMatchName(lookupUserSubscription, UserSubscription.Fields.groupKey.name())).is(groupKey);
         if (Objects.nonNull(subscriptionKey) && !subscriptionKey.isEmpty()) {
             criteria.and(AggregationUtils.makeMatchName(lookupUserSubscription, UserSubscription.Fields.subscriptionKey.name())).is(subscriptionKey);
@@ -175,6 +237,9 @@ public class SubscriptionAggregationRepository {
 
     public Mono<List<StatisticDto>> getAmountForStatistic(StatisticRequestDto requestDto) {
         var lookupSubscription = "sub";
+        var amountAfterCommission = String.format("{$convert: {input: \"$%s\", to: \"double\", onError: null, onNull: null}}", Payment.Fields.amountAfterStripCommission.name());
+        var amount = String.format("{$convert: {input: \"$%s\", to: \"double\", onError: 0, onNull: 0}}", Payment.Fields.amount.name());
+        var revenueAmount = String.format("{$ifNull: [%s, %s]}", amountAfterCommission, amount);
         return mongoTemplate.aggregate(
                         newAggregation(
                                 lookup(AggregationUtils.getCollectionName(UserSubscription.class, false), Payment.Fields.userSubscriptionKey.name(), UserSubscription.Fields.userSubscriptionKey.name(), lookupSubscription),
@@ -185,7 +250,7 @@ public class SubscriptionAggregationRepository {
                                                 .and(Payment.Fields.paymentType.name()).is(PaymentType.SUBSCRIPTION_PAYMENT)
                                                 .and(AggregationUtils.makeMatchName(lookupSubscription, UserSubscription.Fields.subscriptionKey.name())).is(requestDto.getKey())
                                 ),
-                                new FreeFormOperation("$group", String.format("{_id: {dayOfSubscription: {$dateToString:{format: \"%s\", date: \"$%s\"}}}, amount: {$sum: {$toDouble: \"$%s\"}}}", requestDto.getDataPattern(), Payment.Fields.createTimestamp.name(), Payment.Fields.amountAfterStripCommission.name())),
+                                new FreeFormOperation("$group", String.format("{_id: {dayOfSubscription: {$dateToString:{format: \"%s\", date: \"$%s\"}}}, amount: {$sum: %s}}", requestDto.getDataPattern(), Payment.Fields.createTimestamp.name(), revenueAmount)),
                                 new FreeFormOperation("$replaceRoot", String.format("{newRoot: { $mergeObjects: [{%s: \"$_id.dayOfSubscription\"}, { %s: \"$amount\" }]} }", StatisticDto.Fields.columnName.name(), StatisticDto.Fields.amount.name())),
                                 new FreeFormOperation("$sort", String.format("{ \"%s\": 1}", StatisticDto.Fields.columnName.name()))
                         ),

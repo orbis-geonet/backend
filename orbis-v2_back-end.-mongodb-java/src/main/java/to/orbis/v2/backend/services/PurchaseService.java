@@ -20,6 +20,7 @@ import to.orbis.v2.backend.models.entity.Subscription;
 import to.orbis.v2.backend.models.entity.UserPurchase;
 import to.orbis.v2.backend.repositories.*;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -54,11 +55,10 @@ public class PurchaseService extends UserPaymentService{
     }
 
     @Transactional
-    public Mono<CryptoPaymentDto> buyPurchase(String subscriptionKey, Integer number, String userKey, String payerWallet) {
+    public Mono<CryptoPaymentDto> buyPurchase(String subscriptionKey, Integer number, String userKey, String payerWallet, String coin) {
         return subscriptionRepository.findOneBySubscriptionKeyAndDeletedFalse(subscriptionKey)
                 .switchIfEmpty(getNoFoundError())
                 .flatMap(this::validatePurchaseBeforePayment)
-                .flatMap(purchase -> checkPurchaseCurrency(purchase, userKey))
                 .flatMap(subscription -> groupsService.findGroup(subscription.getGroupKey())
                         .flatMap(group -> {
                             if (Boolean.FALSE.equals(group.getIsSubscriptionActivate())) {
@@ -69,9 +69,11 @@ public class PurchaseService extends UserPaymentService{
                         .then(payoutWalletService.requirePayoutPubkey(subscription.getCreatedUserKey()))
                         .flatMap(ownerWallet -> {
                             int qty = number == null ? 1 : number;
-                            double priceUsd = subscription.getPrice().doubleValue() * qty;
-                            return cryptoPaymentIntentClient.createIntent(userKey, "purchase", subscriptionKey, qty, payerWallet, ownerWallet, priceUsd)
-                                    .flatMap(intent -> createUserPurchase(intent.getRef(), userKey, subscription, qty).thenReturn(intent));
+                            BigDecimal totalPrice = subscription.getPrice().multiply(BigDecimal.valueOf(qty));
+                            return cryptoPaymentIntentClient.createIntent(userKey, "purchase", subscriptionKey, qty, payerWallet, ownerWallet, totalPrice, subscription.getCurrency(), coin)
+                                    .flatMap(intent -> intent.getError() == null || intent.getError().isEmpty()
+                                            ? createUserPurchase(intent.getRef(), userKey, subscription, qty).thenReturn(intent)
+                                            : Mono.just(intent));
                         })
                 );
     }

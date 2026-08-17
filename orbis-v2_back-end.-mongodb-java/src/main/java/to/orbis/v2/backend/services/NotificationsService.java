@@ -535,6 +535,39 @@ public class NotificationsService {
                 .then();
     }
 
+    public Mono<Void> notifySubscriptionRenewalReminder(
+            Subscription subscription,
+            Group group,
+            UserSubscription userSubscription,
+            User receiver
+    ) {
+        return Mono.defer(() -> {
+                    val reminder = LocalizedSubscriptionMessages.reminder(receiver.getLanguage(), subscription.getName(), group.getName(), userSubscription.getEndDate());
+
+                    var builder = Message.builder()
+                            .setNotification(Notification.builder()
+                                    .setTitle(reminder.title)
+                                    .setBody(reminder.body)
+                                    .build());
+
+                    builder = builder.putData("fromUserKey", receiver.getUserKey())
+                            .putData("type", NotificationType.SUBSCRIPTION_END_USER.name())
+                            .putData("contentKey", subscription.getSubscriptionKey());
+
+                    sendToUser(receiver, builder, "Failed to notify {} about subscription renewal reminder {}", subscription.getName());
+
+                    val notification = createNotification(reminder.title, reminder.body, NotificationType.SUBSCRIPTION_END_USER);
+
+                    notification.setFromUserKey(receiver.getUserKey());
+                    notification.setForUserKey(receiver.getUserKey());
+                    notification.setGroupKey(group.getGroupKey());
+
+                    return Mono.just(notification);
+                })
+                .flatMap(notificationsRepository::save)
+                .then();
+    }
+
     public Mono<Void> deleteNotification(String notificationKey, String userKey) {
         return notificationsRepository.deleteAllByNotificationKeyAndForUserKey(notificationKey, userKey);
     }

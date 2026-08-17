@@ -19,6 +19,7 @@
     "test:hash": "tsx test/hash_test.ts",
     "test:api": "tsx test/get_and_use_api_key.ts",
     "test:idl": "tsx test/fetch_idl.ts",
+    "sol-payment-config": "tsx scripts/sol-payment-config.ts",
     "lint": "prettier . --check",
     "lint:fix": "prettier . --write",
     "send": "tsx test/send_orbis.ts send",

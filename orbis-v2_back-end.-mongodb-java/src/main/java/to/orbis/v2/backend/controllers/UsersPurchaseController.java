@@ -49,10 +49,11 @@ public class UsersPurchaseController {
             @PathVariable String purchaseKey,
             @RequestParam(defaultValue = "1") Integer number,
             @RequestParam String payerWallet,
+            @RequestParam(defaultValue = "ORBIS") String coin,
             Authentication authentication
     ) {
-        log.info("buy: purchaseKey: {}, userKey: {}, payerWallet: {}", purchaseKey, authentication.getName(), payerWallet);
-        return purchaseService.buyPurchase(purchaseKey, number, authentication.getName(), payerWallet);
+        log.info("buy: purchaseKey: {}, userKey: {}, payerWallet: {}, coin: {}", purchaseKey, authentication.getName(), payerWallet, coin);
+        return purchaseService.buyPurchase(purchaseKey, number, authentication.getName(), payerWallet, coin);
     }
 
     @PreAuthorize("isAuthenticated")

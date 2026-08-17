@@ -10,9 +10,14 @@ import java.util.Map;
 @FieldDefaults(makeFinal = false, level = AccessLevel.PROTECTED)
 public class CryptoPaymentDto {
     String ref;
+    String coin;
     String amountOrbis;
+    String amountSol;
+    String amountLamports;
     Double rate;
     String expiresAt;
     String unsignedTxBase64;
     Map<String, String> recipients;
+    String error;
+    String message;
 }

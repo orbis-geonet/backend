@@ -145,7 +145,7 @@ public class GroupsAggregationsRepository {
                                 "                pipeline: [\n" +
                                 "                    { $match: { $expr: { $eq: [ \"$$sub_groupKey\", \"$%s\" ] } } },\n" +
                                 "                    { $facet: { \"%s\" : [ \n" +
-                                "                        { $match: { $expr: { $and: [ {\"$eq\": [\"$%s\", \"%s\"]}, {\"$eq\": [\"$%s\", \"%s\"]} ] } } }, \n" +
+                        "                        { $match: { $expr: { $and: [ {\"$in\": [\"$%s\", [\"%s\", \"%s\"]]}, {\"$eq\": [\"$%s\", \"%s\"]} ] } } }, \n" +
                                 "                                { \"$group\" : {\"_id\": \"count\", \"count\": {\"$sum\": 1}}}\n" +
                                 "                            ]}}\n" +
                                 "                ],\n" +
@@ -157,6 +157,7 @@ public class GroupsAggregationsRepository {
                         subLookupCount,
                         UserSubscription.Fields.status.name(),
                         UserSubscriptionStatus.ACTIVATED.name(),
+                        UserSubscriptionStatus.DEACTIVATED_REQUEST.name(),
                         UserSubscription.Fields.userKey.name(),
                         userKey,
                         subLookup

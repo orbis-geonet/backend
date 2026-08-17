@@ -70,6 +70,28 @@ pub mod orbis_protocol {
         Ok(())
     }
 
+    pub fn init_sol_payment_config(
+        ctx: Context<InitSolPaymentConfig>,
+        orbis_per_sol_rate: u64,
+    ) -> Result<()> {
+        require!(orbis_per_sol_rate > 0, ErrorCode::InvalidRate);
+
+        let sol_payment_config = &mut ctx.accounts.sol_payment_config;
+        sol_payment_config.orbis_per_sol_rate = orbis_per_sol_rate;
+        Ok(())
+    }
+
+    pub fn update_sol_orbis_rate(
+        ctx: Context<UpdateSolPaymentConfig>,
+        orbis_per_sol_rate: u64,
+    ) -> Result<()> {
+        require!(orbis_per_sol_rate > 0, ErrorCode::InvalidRate);
+
+        let sol_payment_config = &mut ctx.accounts.sol_payment_config;
+        sol_payment_config.orbis_per_sol_rate = orbis_per_sol_rate;
+        Ok(())
+    }
+
     pub fn register_clone(ctx: Context<RegisterClone>, base_url: String) -> Result<()> {
         require!(base_url.len() <= 140, ErrorCode::UrlTooLong);
 
@@ -456,25 +478,8 @@ pub mod orbis_protocol {
     /// custody funds. `payment_ref` is the off-chain correlation/idempotency key
     /// echoed in the emitted event.
     pub fn pay_tribe(ctx: Context<PayTribe>, amount: u64, payment_ref: [u8; 32]) -> Result<()> {
-        const CLONE_BPS: u64 = 700;
-        const TREASURY_BPS: u64 = 300;
-
         require!(amount > 0, ErrorCode::ArithmeticError);
-
-        let clone_cut = amount
-            .checked_mul(CLONE_BPS)
-            .ok_or(error!(ErrorCode::ArithmeticError))?
-            / 10_000;
-        let treasury_cut = amount
-            .checked_mul(TREASURY_BPS)
-            .ok_or(error!(ErrorCode::ArithmeticError))?
-            / 10_000;
-        // Remainder to the owner so no base units are lost to integer rounding (~90%).
-        let owner_cut = amount
-            .checked_sub(clone_cut)
-            .ok_or(error!(ErrorCode::ArithmeticError))?
-            .checked_sub(treasury_cut)
-            .ok_or(error!(ErrorCode::ArithmeticError))?;
+        let (owner_cut, clone_cut, treasury_cut) = split_tribe_amount(amount)?;
 
         // 90% -> tribe owner
         token::transfer(
@@ -529,6 +534,125 @@ pub mod orbis_protocol {
 
         Ok(())
     }
+
+    pub fn pay_tribe_with_sol(
+        ctx: Context<PayTribeWithSol>,
+        sol_lamports: u64,
+        min_orbis_amount: u64,
+        payment_ref: [u8; 32],
+    ) -> Result<()> {
+        require!(sol_lamports > 0, ErrorCode::ArithmeticError);
+
+        let sol_payment_config = &ctx.accounts.sol_payment_config;
+        require!(sol_payment_config.orbis_per_sol_rate > 0, ErrorCode::InvalidRate);
+
+        let amount = quote_sol_to_orbis(sol_lamports, sol_payment_config.orbis_per_sol_rate)?;
+        require!(amount >= min_orbis_amount, ErrorCode::SlippageExceeded);
+        require!(amount > 0, ErrorCode::ArithmeticError);
+        let (owner_cut, clone_cut, treasury_cut) = split_tribe_amount(amount)?;
+
+        let transfer_ix = solana_program::system_instruction::transfer(
+            &ctx.accounts.payer.key(),
+            &ctx.accounts.sol_treasury.key(),
+            sol_lamports,
+        );
+        solana_program::program::invoke(
+            &transfer_ix,
+            &[
+                ctx.accounts.payer.to_account_info(),
+                ctx.accounts.sol_treasury.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+        )?;
+
+        let seeds = &[b"sol_orbis_reserve_vault".as_ref(), &[ctx.bumps.reserve_vault]];
+        let signer = &[&seeds[..]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.key(),
+                Transfer {
+                    from: ctx.accounts.reserve_vault.to_account_info(),
+                    to: ctx.accounts.tribe_owner_token_account.to_account_info(),
+                    authority: ctx.accounts.reserve_vault.to_account_info(),
+                },
+                signer,
+            ),
+            owner_cut,
+        )?;
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.key(),
+                Transfer {
+                    from: ctx.accounts.reserve_vault.to_account_info(),
+                    to: ctx.accounts.clone_token_account.to_account_info(),
+                    authority: ctx.accounts.reserve_vault.to_account_info(),
+                },
+                signer,
+            ),
+            clone_cut,
+        )?;
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.key(),
+                Transfer {
+                    from: ctx.accounts.reserve_vault.to_account_info(),
+                    to: ctx.accounts.treasury_token_account.to_account_info(),
+                    authority: ctx.accounts.reserve_vault.to_account_info(),
+                },
+                signer,
+            ),
+            treasury_cut,
+        )?;
+
+        emit!(TribePaymentMade {
+            payer: ctx.accounts.payer.key(),
+            payment_ref,
+            amount,
+            owner_token_account: ctx.accounts.tribe_owner_token_account.key(),
+            clone_token_account: ctx.accounts.clone_token_account.key(),
+            treasury_token_account: ctx.accounts.treasury_token_account.key(),
+            owner_cut,
+            clone_cut,
+            treasury_cut,
+        });
+
+        Ok(())
+    }
+}
+
+fn split_tribe_amount(amount: u64) -> Result<(u64, u64, u64)> {
+    const CLONE_BPS: u64 = 700;
+    const TREASURY_BPS: u64 = 300;
+
+    let clone_cut = amount
+        .checked_mul(CLONE_BPS)
+        .ok_or(error!(ErrorCode::ArithmeticError))?
+        / 10_000;
+    let treasury_cut = amount
+        .checked_mul(TREASURY_BPS)
+        .ok_or(error!(ErrorCode::ArithmeticError))?
+        / 10_000;
+    let owner_cut = amount
+        .checked_sub(clone_cut)
+        .ok_or(error!(ErrorCode::ArithmeticError))?
+        .checked_sub(treasury_cut)
+        .ok_or(error!(ErrorCode::ArithmeticError))?;
+    Ok((owner_cut, clone_cut, treasury_cut))
+}
+
+fn quote_sol_to_orbis(sol_lamports: u64, orbis_per_sol_rate: u64) -> Result<u64> {
+    let numerator = (sol_lamports as u128)
+        .checked_mul(orbis_per_sol_rate as u128)
+        .ok_or(error!(ErrorCode::ArithmeticError))?;
+    let amount = numerator
+        .checked_add(999_999_999)
+        .ok_or(error!(ErrorCode::ArithmeticError))?
+        / 1_000_000_000u128;
+    require!(amount <= u64::MAX as u128, ErrorCode::ArithmeticError);
+    Ok(amount as u64)
 }
 
 #[derive(Accounts)]
@@ -569,6 +693,49 @@ pub struct UpdateConfigFees<'info> {
         bump,
         has_one = admin
     )]
+    pub config: Account<'info, GlobalConfig>,
+    pub admin: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct InitSolPaymentConfig<'info> {
+    #[account(
+        init,
+        payer = admin,
+        space = 8 + 8,
+        seeds = [b"sol_payment_config"],
+        bump
+    )]
+    pub sol_payment_config: Account<'info, SolPaymentConfig>,
+    #[account(
+        init,
+        payer = admin,
+        seeds = [b"sol_orbis_reserve_vault"],
+        bump,
+        token::mint = orbis_mint,
+        token::authority = reserve_vault,
+    )]
+    pub reserve_vault: Account<'info, TokenAccount>,
+    #[account(address = config.orbis_mint)]
+    pub orbis_mint: Account<'info, Mint>,
+    #[account(seeds = [b"global_config"], bump, has_one = admin @ ErrorCode::Unauthorized)]
+    pub config: Account<'info, GlobalConfig>,
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
+}
+
+#[derive(Accounts)]
+pub struct UpdateSolPaymentConfig<'info> {
+    #[account(
+        mut,
+        seeds = [b"sol_payment_config"],
+        bump
+    )]
+    pub sol_payment_config: Account<'info, SolPaymentConfig>,
+    #[account(seeds = [b"global_config"], bump, has_one = admin @ ErrorCode::Unauthorized)]
     pub config: Account<'info, GlobalConfig>,
     pub admin: Signer<'info>,
 }
@@ -866,6 +1033,11 @@ pub struct GlobalConfig {
 }
 
 #[account]
+pub struct SolPaymentConfig {
+    pub orbis_per_sol_rate: u64,
+}
+
+#[account]
 pub struct CloneInfo {
     pub owner: Pubkey,
     pub base_url: String,
@@ -910,6 +1082,10 @@ pub enum ErrorCode {
     UrlTooLong,
     #[msg("Batch contains too many entries")]
     BatchTooLarge,
+    #[msg("Invalid SOL to ORBIS rate")]
+    InvalidRate,
+    #[msg("Quoted ORBIS amount is below the required minimum")]
+    SlippageExceeded,
 }
 
 #[event]
@@ -955,6 +1131,47 @@ pub struct PayTribe<'info> {
     #[account(seeds = [b"global_config"], bump)]
     pub config: Account<'info, GlobalConfig>,
     pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct PayTribeWithSol<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    #[account(mut, address = config.treasury)]
+    pub sol_treasury: SystemAccount<'info>,
+    #[account(
+        seeds = [b"sol_payment_config"],
+        bump
+    )]
+    pub sol_payment_config: Account<'info, SolPaymentConfig>,
+    #[account(
+        mut,
+        seeds = [b"sol_orbis_reserve_vault"],
+        bump,
+        constraint = reserve_vault.owner == reserve_vault.key() @ ErrorCode::InvalidTokenAccount,
+        constraint = reserve_vault.mint == config.orbis_mint @ ErrorCode::InvalidTokenAccount,
+    )]
+    pub reserve_vault: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        constraint = tribe_owner_token_account.mint == config.orbis_mint @ ErrorCode::InvalidTokenAccount,
+    )]
+    pub tribe_owner_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        constraint = clone_token_account.mint == config.orbis_mint @ ErrorCode::InvalidTokenAccount,
+    )]
+    pub clone_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        constraint = treasury_token_account.owner == config.treasury @ ErrorCode::InvalidTokenAccount,
+        constraint = treasury_token_account.mint == config.orbis_mint @ ErrorCode::InvalidTokenAccount,
+    )]
+    pub treasury_token_account: Account<'info, TokenAccount>,
+    #[account(seeds = [b"global_config"], bump)]
+    pub config: Account<'info, GlobalConfig>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
 }
 
 #[event]

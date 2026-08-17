@@ -12,6 +12,7 @@ import java.util.List;
 public class EmailMessage {
     private String to;
     private EmailType emailType;
+    private String language;
 
     private String userName;
     private String userEmail;
@@ -21,4 +22,10 @@ public class EmailMessage {
     private String contactEmail;
     private String nameOfGroup;
     private String codes;
+    private String txSignature;
+    private String solscanUrl;
+    private String solanaCluster;
+    private String ownerCutOrbis;
+    private String cloneCutOrbis;
+    private String treasuryCutOrbis;
 }

@@ -30,11 +30,6 @@ public class ApiKeyWebFilter implements WebFilter {
             return chain.filter(exchange);
         }
 
-        String authHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            return chain.filter(exchange);
-        }
-
         String apiKey = exchange.getRequest().getHeaders().getFirst("X-API-Key");
         if (apiKey != null && isValidHmac(apiKey)) {
             return chain.filter(exchange);
@@ -45,6 +40,19 @@ public class ApiKeyWebFilter implements WebFilter {
             return chain.filter(exchange);
         }
 
+        if (path.equals("/internal") || path.startsWith("/internal/")) {
+            return unauthorized(exchange);
+        }
+
+        String authHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return chain.filter(exchange);
+        }
+
+        return unauthorized(exchange);
+    }
+
+    private Mono<Void> unauthorized(ServerWebExchange exchange) {
         exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
         exchange.getResponse().getHeaders().add("Content-Type", "application/json");
         DataBuffer buffer = exchange.getResponse()

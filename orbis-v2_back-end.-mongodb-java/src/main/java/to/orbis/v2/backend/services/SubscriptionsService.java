@@ -3,6 +3,7 @@ package to.orbis.v2.backend.services;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Flux;
@@ -27,6 +28,7 @@ import to.orbis.v2.backend.models.entity.UserSubscription;
 import to.orbis.v2.backend.repositories.StripeAccountRepository;
 import to.orbis.v2.backend.repositories.SubscriptionAggregationRepository;
 import to.orbis.v2.backend.repositories.SubscriptionRepository;
+import to.orbis.v2.backend.repositories.UserPurchaseRepository;
 import to.orbis.v2.backend.repositories.UserSubscriptionRepository;
 
 import java.time.Instant;
@@ -42,6 +44,7 @@ public class SubscriptionsService extends UserPaymentService {
     private final SubscriptionRepository subscriptionRepository;
     private final StripeAccountRepository stripeAccountRepository;
     private final UserSubscriptionRepository userSubscriptionRepository;
+    private final UserPurchaseRepository userPurchaseRepository;
     private final StripePaymentService stripePaymentService;
     private final UsersService usersService;
     private final GroupsService groupsService;
@@ -52,12 +55,14 @@ public class SubscriptionsService extends UserPaymentService {
     private final StatisticService statisticService;
     private final CryptoPaymentIntentClient cryptoPaymentIntentClient;
     private final PayoutWalletService payoutWalletService;
+    private final NativeCurrencyService nativeCurrencyService;
 
-    public SubscriptionsService(SubscriptionAggregationRepository subscriptionAggregationRepository, SubscriptionRepository subscriptionRepository, StripeAccountRepository stripeAccountRepository, UserSubscriptionRepository userSubscriptionRepository, StripePaymentService stripePaymentService, UsersService usersService, GroupsService groupsService, StripeService stripeService, StripeConfiguration stripeConfiguration, SubscriptionAggregationRepository subscriptionAggregationRepository1, NotificationsService notificationsService, StatisticService statisticService, CryptoPaymentIntentClient cryptoPaymentIntentClient, PayoutWalletService payoutWalletService) {
+    public SubscriptionsService(SubscriptionAggregationRepository subscriptionAggregationRepository, SubscriptionRepository subscriptionRepository, StripeAccountRepository stripeAccountRepository, UserSubscriptionRepository userSubscriptionRepository, UserPurchaseRepository userPurchaseRepository, StripePaymentService stripePaymentService, UsersService usersService, GroupsService groupsService, StripeService stripeService, StripeConfiguration stripeConfiguration, SubscriptionAggregationRepository subscriptionAggregationRepository1, NotificationsService notificationsService, StatisticService statisticService, CryptoPaymentIntentClient cryptoPaymentIntentClient, PayoutWalletService payoutWalletService, NativeCurrencyService nativeCurrencyService) {
         super(subscriptionAggregationRepository);
         this.subscriptionRepository = subscriptionRepository;
         this.stripeAccountRepository = stripeAccountRepository;
         this.userSubscriptionRepository = userSubscriptionRepository;
+        this.userPurchaseRepository = userPurchaseRepository;
         this.stripePaymentService = stripePaymentService;
         this.usersService = usersService;
         this.groupsService = groupsService;
@@ -67,6 +72,7 @@ public class SubscriptionsService extends UserPaymentService {
         this.statisticService = statisticService;
         this.cryptoPaymentIntentClient = cryptoPaymentIntentClient;
         this.payoutWalletService = payoutWalletService;
+        this.nativeCurrencyService = nativeCurrencyService;
     }
 
     @Transactional
@@ -157,7 +163,7 @@ public class SubscriptionsService extends UserPaymentService {
                         return Mono.just(group);
                     }
                 })
-                .flatMap(group -> userSubscriptionRepository.findAllByGroupKeyAndStatus(groupKey, UserSubscriptionStatus.ACTIVATED)
+                .flatMap(group -> findActiveGroupSubscriptions(groupKey)
                         .count()
                         .flatMap(count -> {
                             if (!sure && count != 0) {
@@ -166,8 +172,8 @@ public class SubscriptionsService extends UserPaymentService {
                                 return Mono.empty();
                             }
                         })
-                        .then(userSubscriptionRepository.findAllByGroupKeyAndStatus(groupKey, UserSubscriptionStatus.ACTIVATED)
-                                .flatMap(userSubscription -> unsubscribe(userSubscription.getSubscriptionKey(), userSubscription.getUserKey()))
+                        .then(findActiveGroupSubscriptions(groupKey)
+                                .flatMap(this::deactivateNow)
                                 .then(Mono.just(group))))
                 .flatMap(group -> {
                     group.setTimestamp(Instant.now());
@@ -187,11 +193,10 @@ public class SubscriptionsService extends UserPaymentService {
     }
 
     @Transactional
-    public Mono<CryptoPaymentDto> subscribe(String subscriptionKey, String userKey, String payerWallet) {
+    public Mono<CryptoPaymentDto> subscribe(String subscriptionKey, String userKey, String payerWallet, String coin) {
         return subscriptionRepository.findOneBySubscriptionKeyAndDeletedFalse(subscriptionKey)
                 .switchIfEmpty(getNoFoundError())
                 .flatMap(this::validatePurchaseBeforePayment)
-                .flatMap(subscription -> checkPurchaseCurrency(subscription, userKey))
                 .flatMap(subscription -> groupsService.findGroup(subscription.getGroupKey())
                         .flatMap(group -> {
                             if (Boolean.FALSE.equals(group.getIsSubscriptionActivate())) {
@@ -199,34 +204,65 @@ public class SubscriptionsService extends UserPaymentService {
                             }
                             return groupsService.addMember(group.getGroupKey(), userKey);
                         })
-                        .then(userSubscriptionRepository.findBySubscriptionKeyAndUserKeyAndStatus(subscriptionKey, userKey, UserSubscriptionStatus.ACTIVATED)
-                                .flatMap(userSubscription -> Mono.error(() -> new SubscriptionException("You cannot subscribe, user has already activated this subscription.")))
-                                .then(payoutWalletService.requirePayoutPubkey(subscription.getCreatedUserKey()))
-                        )
-                        .flatMap(ownerWallet -> cryptoPaymentIntentClient.createIntent(userKey, "subscription", subscriptionKey, 1, payerWallet, ownerWallet, subscription.getPrice().doubleValue())
-                                .flatMap(intent -> createUserSubscription(intent.getRef(), userKey, subscription).thenReturn(intent)))
+                        .then(payoutWalletService.requirePayoutPubkey(subscription.getCreatedUserKey()))
+                        .flatMap(ownerWallet -> userSubscriptionRepository.findFirstBySubscriptionKeyAndUserKeyOrderByCreateTimestampDesc(subscriptionKey, userKey)
+                                .flatMap(userSubscription -> createIntentForExistingUserSubscription(userSubscription, userKey, payerWallet, coin, ownerWallet, subscription))
+                                .switchIfEmpty(createIntentForNewUserSubscription(userKey, payerWallet, coin, ownerWallet, subscription)))
                 );
     }
 
     @Transactional
     public Mono<Void> unsubscribe(String subscriptionKey, String userKey) {
-        return userSubscriptionRepository.findBySubscriptionKeyAndUserKeyAndStatus(subscriptionKey, userKey, UserSubscriptionStatus.ACTIVATED)
-                .switchIfEmpty(Mono.error(() -> new SubscriptionException("You cannot unsubscribe, user doesn't subscribe.")))
+        return userSubscriptionRepository.findFirstBySubscriptionKeyAndUserKeyOrderByCreateTimestampDesc(subscriptionKey, userKey)
                 .flatMap(userSubscription -> {
-                    userSubscription.setStatus(UserSubscriptionStatus.DEACTIVATED);
-                    userSubscription.setTimestamp(Instant.now());
-                    return userSubscriptionRepository.save(userSubscription)
-                            .then();
-                });
+                    if (userSubscription.getStatus() == UserSubscriptionStatus.ACTIVATED) {
+                        return requestDeactivation(userSubscription).thenReturn(true);
+                    }
+                    if (userSubscription.getStatus() == UserSubscriptionStatus.DEACTIVATED_REQUEST) {
+                        return Mono.just(true);
+                    }
+                    return Mono.empty();
+                })
+                .switchIfEmpty(Mono.defer(() -> userPurchaseRepository.findAllByPurchaseKeyAndUserKeyAndStatus(subscriptionKey, userKey, UserSubscriptionStatus.FINISHED)
+                        .collectList()
+                        .flatMap(userPurchases -> {
+                            if (userPurchases.isEmpty()) {
+                                return Mono.empty();
+                            }
+                            var now = Instant.now();
+                            userPurchases.forEach(userPurchase -> {
+                                userPurchase.setStatus(UserSubscriptionStatus.DEACTIVATED);
+                                userPurchase.setTimestamp(now);
+                            });
+                            return Flux.fromIterable(userPurchases)
+                                    .concatMap(userPurchaseRepository::save)
+                                    .then(Mono.just(true));
+                        })))
+                .switchIfEmpty(Mono.error(() -> new SubscriptionException("You cannot unsubscribe, user doesn't subscribe.")))
+                .then();
     }
 
     public Mono<CommissionDto> getSubscriptionInfo() {
-        return Mono.just(
+        return getSubscriptionInfo(null);
+    }
+
+    public Mono<CommissionDto> getSubscriptionInfo(String userKey) {
+        return getSubscriptionInfo(userKey, null);
+    }
+
+    public Mono<CommissionDto> getSubscriptionInfo(String userKey, GeoJsonPoint location) {
+        Mono<NativeCurrencyService.NativeCurrencyInfo> nativeCurrencyInfo = userKey == null || userKey.isBlank()
+                ? Mono.just(new NativeCurrencyService.NativeCurrencyInfo(Currency.USD, java.math.BigDecimal.ONE, false))
+                : nativeCurrencyService.findForLocationOrUser(location, userKey);
+        return nativeCurrencyInfo.map(info ->
                 CommissionDto.builder()
                         .orbisCommission(Double.parseDouble(stripeConfiguration.getOrbisCommission()))
                         .stripeCommission(Double.parseDouble(stripeConfiguration.getStripeCommission()))
                         .stripeAdditionFee(Double.parseDouble(stripeConfiguration.getStripeAdditionFee()))
                         .currencies(List.of(Currency.values()))
+                        .nativeCurrency(info.getNativeCurrency())
+                        .nativeCurrencyUsdRate(info.getNativeCurrencyUsdRate())
+                        .nativeCurrencyAvailable(info.isNativeCurrencyAvailable())
                         .build()
         );
     }
@@ -344,6 +380,75 @@ public class SubscriptionsService extends UserPaymentService {
 
         userSubscription.setId(id);
         return userSubscriptionRepository.save(userSubscription);
+    }
+
+    private Flux<UserSubscription> findActiveGroupSubscriptions(String groupKey) {
+        return Flux.concat(
+                userSubscriptionRepository.findAllByGroupKeyAndStatus(groupKey, UserSubscriptionStatus.ACTIVATED),
+                userSubscriptionRepository.findAllByGroupKeyAndStatus(groupKey, UserSubscriptionStatus.DEACTIVATED_REQUEST)
+        );
+    }
+
+    private Mono<UserSubscription> deactivateNow(UserSubscription userSubscription) {
+        userSubscription.setStatus(UserSubscriptionStatus.DEACTIVATED);
+        userSubscription.setTimestamp(Instant.now());
+        return userSubscriptionRepository.save(userSubscription);
+    }
+
+    private Mono<UserSubscription> requestDeactivation(UserSubscription userSubscription) {
+        var now = Instant.now();
+        if (userSubscription.getEndDate() != null && userSubscription.getEndDate().isAfter(now)) {
+            userSubscription.setStatus(UserSubscriptionStatus.DEACTIVATED_REQUEST);
+        } else {
+            userSubscription.setStatus(UserSubscriptionStatus.DEACTIVATED);
+        }
+        userSubscription.setTimestamp(now);
+        return userSubscriptionRepository.save(userSubscription);
+    }
+
+    private Mono<CryptoPaymentDto> createIntentForNewUserSubscription(
+            String userKey,
+            String payerWallet,
+            String coin,
+            String ownerWallet,
+            Subscription subscription
+    ) {
+        return cryptoPaymentIntentClient.createIntent(userKey, "subscription", subscription.getSubscriptionKey(), 1, payerWallet, ownerWallet, subscription.getPrice(), subscription.getCurrency(), coin)
+                .flatMap(intent -> intent.getError() == null || intent.getError().isEmpty()
+                        ? createUserSubscription(intent.getRef(), userKey, subscription).thenReturn(intent)
+                        : Mono.just(intent));
+    }
+
+    private Mono<CryptoPaymentDto> createIntentForExistingUserSubscription(
+            UserSubscription userSubscription,
+            String userKey,
+            String payerWallet,
+            String coin,
+            String ownerWallet,
+            Subscription subscription
+    ) {
+        return cryptoPaymentIntentClient.createIntent(userKey, "subscription", subscription.getSubscriptionKey(), 1, payerWallet, ownerWallet, subscription.getPrice(), subscription.getCurrency(), coin)
+                .flatMap(intent -> {
+                    if (intent.getError() != null && !intent.getError().isEmpty()) {
+                        return Mono.just(intent);
+                    }
+                    var now = Instant.now();
+                    userSubscription.setTimestamp(now);
+                    if (isRenewal(userSubscription)) {
+                        userSubscription.setPendingRenewalPaymentRef(intent.getRef());
+                    } else {
+                        userSubscription.setPaymentRef(intent.getRef());
+                        userSubscription.setStatus(UserSubscriptionStatus.START_PAYMENT);
+                    }
+                    return userSubscriptionRepository.save(userSubscription).thenReturn(intent);
+                });
+    }
+
+    private boolean isRenewal(UserSubscription userSubscription) {
+        return userSubscription.getEndDate() != null
+                || userSubscription.getStatus() == UserSubscriptionStatus.ACTIVATED
+                || userSubscription.getStatus() == UserSubscriptionStatus.DEACTIVATED_REQUEST
+                || userSubscription.getStatus() == UserSubscriptionStatus.DEACTIVATED;
     }
 
     private Mono<Void> notify(

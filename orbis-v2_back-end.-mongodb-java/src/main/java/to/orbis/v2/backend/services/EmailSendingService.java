@@ -14,6 +14,7 @@ import to.orbis.v2.backend.models.dto.email.CreateEmailTemplateRequest;
 import to.orbis.v2.backend.models.dto.email.EmailMessage;
 import to.orbis.v2.backend.models.dto.email.EmailType;
 import to.orbis.v2.backend.models.entity.Group;
+import to.orbis.v2.backend.models.entity.Payment;
 import to.orbis.v2.backend.models.entity.UserPurchase;
 import to.orbis.v2.backend.models.entity.UserSubscription;
 import to.orbis.v2.backend.repositories.SubscriptionRepository;
@@ -66,40 +67,62 @@ public class EmailSendingService {
     }
 
     public Mono<Void> sendEmails(UserPurchase userPurchase) {
+        return sendEmails(userPurchase, null);
+    }
+
+    public Mono<Void> sendEmails(UserPurchase userPurchase, Payment payment) {
         return groupsService.findGroup(userPurchase.getGroupKey())
-                .flatMap(group -> sendPurchaseEmail(group, userPurchase, EmailType.USER)
-                        .then(sendPurchaseEmail(group, userPurchase, EmailType.ADMIN)));
+                .flatMap(group -> sendPurchaseEmail(group, userPurchase, EmailType.USER, payment)
+                        .then(sendPurchaseEmail(group, userPurchase, EmailType.ADMIN, payment)));
     }
 
     public Mono<Void> sendEmails(UserSubscription userSubscription) {
+        return sendEmails(userSubscription, null);
+    }
+
+    public Mono<Void> sendEmails(UserSubscription userSubscription, Payment payment) {
         return groupsService.findGroup(userSubscription.getGroupKey())
-                .flatMap(group -> sendSubscriptionEmail(group, userSubscription, EmailType.USER)
-                        .then(sendSubscriptionEmail(group, userSubscription, EmailType.ADMIN)));
+                .flatMap(group -> sendSubscriptionEmail(group, userSubscription, EmailType.USER, payment)
+                        .then(sendSubscriptionEmail(group, userSubscription, EmailType.ADMIN, payment)));
     }
 
     public Mono<Void> sendPurchaseEmail(Group group, UserPurchase userPurchase, EmailType type) {
+        return sendPurchaseEmail(group, userPurchase, type, null);
+    }
+
+    public Mono<Void> sendPurchaseEmail(Group group, UserPurchase userPurchase, EmailType type, Payment payment) {
         return sendUserEmail(
                 group,
                 userPurchase.getUserKey(),
                 userPurchase.getPurchaseKey(),
                 userPurchase.getNumber(),
                 userPurchase.getCodes(),
-                type
+                type,
+                payment
         );
     }
 
     public Mono<Void> sendSubscriptionEmail(Group group, UserSubscription userSubscription, EmailType type) {
+        return sendSubscriptionEmail(group, userSubscription, type, null);
+    }
+
+    public Mono<Void> sendSubscriptionEmail(Group group, UserSubscription userSubscription, EmailType type, Payment payment) {
         return sendUserEmail(
                 group,
                 userSubscription.getUserKey(),
                 userSubscription.getSubscriptionKey(),
                 1,
                 userSubscription.getCodes(),
-                type
+                type,
+                payment
         );
     }
 
     public Mono<Void> sendUserEmail(Group group, String userKey, String subscriptionKey, Integer number, List<String> codes, EmailType type) {
+        return sendUserEmail(group, userKey, subscriptionKey, number, codes, type, null);
+    }
+
+    public Mono<Void> sendUserEmail(Group group, String userKey, String subscriptionKey, Integer number, List<String> codes, EmailType type, Payment payment) {
         return usersService.findUser(group.getMainAdmin(), "Cannot find user")
                 .flatMap(mainAdmin -> usersService.findUser(userKey, "Cannot find user")
                         .flatMap(user -> subscriptionRepository.findOneBySubscriptionKey(subscriptionKey)
@@ -116,13 +139,16 @@ public class EmailSendingService {
                                     switch (type) {
                                         case USER:
                                             emailSendRequestBuilder.to(user.getEmail());
+                                            emailSendRequestBuilder.language(user.getLanguage());
                                             emailSendRequestBuilder.contactName(mainAdmin.getDisplayName());
                                             emailSendRequestBuilder.contactEmail(mainAdmin.getEmail());
                                             break;
                                         case ADMIN:
                                             emailSendRequestBuilder.to(mainAdmin.getEmail());
+                                            emailSendRequestBuilder.language(mainAdmin.getLanguage());
                                             break;
                                     }
+                                    addPaymentDetails(emailSendRequestBuilder, payment);
                                     var request = emailSendRequestBuilder.build();
                                     var result = sendOneMessage(emailSendRequestBuilder.build());;
                                     log.info("Send email to {} email: {}", type, request.getTo());
@@ -130,6 +156,18 @@ public class EmailSendingService {
                                 })
                         )
                 );
+    }
+
+    private void addPaymentDetails(EmailMessage.EmailMessageBuilder builder, Payment payment) {
+        if (payment == null) {
+            return;
+        }
+        builder.txSignature(payment.getTxSignature())
+                .solscanUrl(payment.getSolscanUrl())
+                .solanaCluster(payment.getSolanaCluster())
+                .ownerCutOrbis(payment.getOwnerCutOrbis())
+                .cloneCutOrbis(payment.getCloneCutOrbis())
+                .treasuryCutOrbis(payment.getTreasuryCutOrbis());
     }
 
     public void createTemplate(CreateEmailTemplateRequest createEmailTemplateRequest) {
@@ -159,7 +197,7 @@ public class EmailSendingService {
             helper.setTo(emailMessage.getTo());
         }
 
-        helper.setSubject(emailMessage.getEmailType().getSubject().replace("{{groupName}}", emailMessage.getNameOfGroup()));
+        helper.setSubject(LocalizedSubscriptionMessages.subject(emailMessage));
         helper.setText(createBody(emailMessage), true);
 
 
@@ -208,18 +246,7 @@ public class EmailSendingService {
     }
 
     private String createBody(EmailMessage emailMessage) {
-        var body = emailMessage.getEmailType().equals(EmailType.ADMIN) ? ADMIN_EMAIL : USER_EMAIL;
-
-
-        return body
-                .replace("{{" + EmailMessage.Fields.userName.name() + "}}", Objects.nonNull(emailMessage.getUserName()) ? emailMessage.getUserName() : "")
-                .replace("{{" + EmailMessage.Fields.userEmail.name() + "}}", Objects.nonNull(emailMessage.getUserEmail()) ? emailMessage.getUserEmail() : "")
-                .replace("{{" + EmailMessage.Fields.purchaseName.name() + "}}", Objects.nonNull(emailMessage.getPurchaseName()) ? emailMessage.getPurchaseName() : "")
-                .replace("{{" + EmailMessage.Fields.quantity.name() + "}}", Objects.nonNull(emailMessage.getQuantity()) ? emailMessage.getQuantity().toString() : "")
-                .replace("{{" + EmailMessage.Fields.contactName.name() + "}}", Objects.nonNull(emailMessage.getContactName()) ? emailMessage.getContactName() : "")
-                .replace("{{" + EmailMessage.Fields.contactEmail.name() + "}}", Objects.nonNull(emailMessage.getContactEmail()) ? emailMessage.getContactEmail() : "")
-                .replace("{{" + EmailMessage.Fields.nameOfGroup.name() + "}}", Objects.nonNull(emailMessage.getNameOfGroup()) ? emailMessage.getNameOfGroup() : "")
-                .replace("{{" + EmailMessage.Fields.codes.name() + "}}", Objects.nonNull(emailMessage.getCodes()) ? emailMessage.getCodes() : "");
+        return LocalizedSubscriptionMessages.body(emailMessage);
     }
 
 

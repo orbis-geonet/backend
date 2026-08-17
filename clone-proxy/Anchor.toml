@@ -18,7 +18,7 @@ orbis_protocol = "x2HARL2kBx2jVHtgWvf8sX8zbZ3sBAvtHJeg8AgosqR"
 orbis_protocol = "x2HARL2kBx2jVHtgWvf8sX8zbZ3sBAvtHJeg8AgosqR"
 
 [provider]
-cluster = "devnet"
+cluster = "mainnet"
 wallet = "wallet/wallet.json"
 
 [scripts]

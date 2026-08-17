@@ -54,7 +54,7 @@ Required variables:
 | `LOCAL_DB_NAME` | `orbis_local` | MongoDB database name used by this clone. |
 | `WALLET_PATH` | `wallet.json` | Wallet file name under `./wallet/` for the running clone. |
 | `RPC_URL` | `https://api.mainnet-beta.solana.com` | Solana RPC endpoint. Use a reliable paid RPC for production. |
-| `PROGRAM_ID` | `x2HARL2...` | Orbis Protocol program id. |
+| `PROGRAM_ID` | `2FrLL3...` | Orbis Protocol program id. |
 | `MERKLE_TREE_MINT` | `H8gv...` | Merkle tree account used by the protocol indexer. |
 | `ORBIS_MINT` | `GBGP...` | ORBIS token mint. |
 | `CLONE_PORT` | `3000` | HTTP port for this proxy. |

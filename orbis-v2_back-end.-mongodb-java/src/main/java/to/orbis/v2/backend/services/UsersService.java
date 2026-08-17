@@ -257,7 +257,7 @@ public class UsersService {
 
     private Mono<Optional<GeoJsonPoint>> locateUser(Optional<String> viewerKey, Optional<GeoJsonPoint> viewerLocation) {
         return viewerLocation.map(Mono::just)
-                .orElse(viewerKey.map(uk -> usersRepository.findOneByUserKey(uk).map(User::getCoordinates)).orElse(Mono.empty()))
+                .orElse(viewerKey.map(uk -> usersRepository.findOneByUserKey(uk).flatMap(user -> Mono.justOrEmpty(user.getCoordinates()))).orElse(Mono.empty()))
                 .map(Optional::of)
                 .switchIfEmpty(Mono.just(Optional.empty()));
     }

@@ -9,6 +9,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
+function explorerUrl(tx: string): string {
+    const configured = String(process.env.SOLANA_CLUSTER || process.env.CLUSTER || "").trim().toLowerCase();
+    const rpc = String(process.env.RPC_URL || "").toLowerCase();
+    const cluster = configured || (rpc.includes("devnet") ? "devnet" : rpc.includes("testnet") ? "testnet" : "mainnet");
+    return cluster === "mainnet" || cluster === "mainnet-beta"
+        ? `https://explorer.solana.com/tx/${tx}`
+        : `https://explorer.solana.com/tx/${tx}?cluster=${cluster}`;
+}
+
 async function main() {
     const action = process.argv[2];
     const targetStr = process.argv[3];
@@ -78,7 +87,7 @@ async function main() {
 
     console.log(`\n${action === "grant" ? "Genesis granted" : "Genesis revoked"} for ${targetStr}`);
     console.log(`Transaction: ${tx}`);
-    console.log(`https://explorer.solana.com/tx/${tx}?cluster=devnet`);
+    console.log(explorerUrl(tx));
 }
 
 main().catch(err => {

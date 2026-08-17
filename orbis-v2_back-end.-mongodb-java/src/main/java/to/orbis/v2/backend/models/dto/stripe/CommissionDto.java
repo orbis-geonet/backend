@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.experimental.FieldDefaults;
 import to.orbis.v2.backend.models.Currency;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -16,4 +17,7 @@ public class CommissionDto {
     Double stripeCommission;
     Double stripeAdditionFee;
     List<Currency> currencies;
+    Currency nativeCurrency;
+    BigDecimal nativeCurrencyUsdRate;
+    Boolean nativeCurrencyAvailable;
 }

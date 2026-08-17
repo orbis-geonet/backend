@@ -1,0 +1,24 @@
+# Build output
+build/
+.gradle/
+
+# IDE
+.idea/
+.run/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# VCS
+.git/
+.gitignore
+
+# Docs
+README.md
+HELP.md
+
+# Local docker artifacts
+docker-compose*.yml
+Dockerfile
+.dockerignore

@@ -35,11 +35,11 @@ public class StatisticService {
             case MONTH:
                 return countLastMonthDailyStatistic(subscriptionKey, getCountForStatistic, getAmountForStatistic);
             case TRIMESTER:
-                return countLast3MonthWeeklyStatistic(subscriptionKey, getCountForStatistic, getAmountForStatistic);
+                return countMonthStatistic(subscriptionKey, 3, getCountForStatistic, getAmountForStatistic);
             case SEMESTER:
                 return countMonthStatistic(subscriptionKey, 6, getCountForStatistic, getAmountForStatistic);
             case YEAR:
-                return countMonthStatistic(subscriptionKey, 12, getCountForStatistic, getAmountForStatistic);
+                return countYearStatistic(subscriptionKey, getCountForStatistic, getAmountForStatistic);
             default:
                 throw new IllegalStateException("Unexpected value statisticType: " + type);
         }
@@ -102,7 +102,7 @@ public class StatisticService {
             Function<StatisticRequestDto, Mono<List<StatisticDto>>> getAmountForStatistic
     ) {
         var endDate = YearMonth.now().plusMonths(1).atDay(1);
-        var startDate = LocalDate.now().minusMonths(numberOfMonth).with(TemporalAdjusters.firstDayOfMonth());
+        var startDate = YearMonth.now().minusMonths(numberOfMonth - 1L).atDay(1);
 
         long numOfMonthBetween = ChronoUnit.MONTHS.between(startDate, endDate);
         var datesList =
@@ -112,6 +112,24 @@ public class StatisticService {
                         .collect(Collectors.toList());
 
         return getStatistic(datesList, startDate, endDate, "%Y-%m", subscriptionKey, getCountForStatistic, getAmountForStatistic);
+    }
+
+    private Mono<List<StatisticDto>> countYearStatistic(
+            String subscriptionKey,
+            Function<StatisticRequestDto, Mono<List<StatisticDto>>> getCountForStatistic,
+            Function<StatisticRequestDto, Mono<List<StatisticDto>>> getAmountForStatistic
+    ) {
+        var endDate = LocalDate.now().plusYears(1).with(TemporalAdjusters.firstDayOfYear());
+        var startDate = LocalDate.now().minusYears(2).with(TemporalAdjusters.firstDayOfYear());
+
+        long numOfYearsBetween = ChronoUnit.YEARS.between(startDate, endDate);
+        var datesList =
+                IntStream.iterate(0, i -> i + 1)
+                        .limit(numOfYearsBetween)
+                        .mapToObj(i -> new StatisticDto(startDate.plusYears(i).format(DateTimeFormatter.ofPattern("uuuu"))))
+                        .collect(Collectors.toList());
+
+        return getStatistic(datesList, startDate, endDate, "%Y", subscriptionKey, getCountForStatistic, getAmountForStatistic);
     }
 
     private String getWeekNumber(LocalDate date) {

@@ -8,12 +8,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
+import to.orbis.v2.backend.filters.LocationWebFilter;
 import to.orbis.v2.backend.mappers.SubscriptionMapper;
 import to.orbis.v2.backend.models.StatisticSubscriptionType;
 import to.orbis.v2.backend.models.dto.*;
@@ -206,8 +208,12 @@ public class GroupsSubscriptionController {
             @ApiResponse(responseCode = "401", description = "Auth error")
     })
     @Operation(description = "Get commission info for a group", operationId = "subscriptionInfo", security = @SecurityRequirement(name = "firebase"))
-    public Mono<CommissionDto> subscriptionInfo() {
-        return subscriptionsService.getSubscriptionInfo();
+    public Mono<CommissionDto> subscriptionInfo(
+            @RequestHeader(name = LocationWebFilter.COORDS_HEADER, required = false) String locationHeader,
+            Authentication authentication
+    ) {
+        GeoJsonPoint location = locationHeader == null ? null : LocationWebFilter.parseLocationHeader(locationHeader);
+        return subscriptionsService.getSubscriptionInfo(authentication.getName(), location);
     }
 
     @PreAuthorize("isAuthenticated")

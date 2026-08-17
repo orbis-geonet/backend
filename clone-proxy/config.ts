@@ -11,6 +11,7 @@ const REQUIRED_ENV_VARS = [
     "RPC_URL",
     "PROGRAM_ID",
     "MERKLE_TREE_MINT",
+    "ORBIS_MINT",
     "CLONE_PORT",
     "JAVA_BACKEND_URL",
     "CLONE_BASE_URL",
@@ -29,7 +30,7 @@ export const CLONE_BASE_URL = process.env.CLONE_BASE_URL!;
 export const RPC_URL = process.env.RPC_URL!;
 export const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID!);
 export const MERKLE_TREE_MINT = new PublicKey(process.env.MERKLE_TREE_MINT!);
-export const ORBIS_MINT = new PublicKey(process.env.ORBIS_MINT || "GkEwz1aZTTmJ4Xao3WfA3UEhBhPGrfZQ6VSMQ3xcQzfp");
+export const ORBIS_MINT = new PublicKey(process.env.ORBIS_MINT!);
 
 export const COLLECTION_ORDER = [
     "users", "groups", "userPurchase", "stripeAccount", "stripeTransfer",

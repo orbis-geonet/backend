@@ -10,6 +10,7 @@ import to.orbis.v2.backend.models.SubscriptionType;
 import to.orbis.v2.backend.models.UserSubscriptionStatus;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 @Data
@@ -25,11 +26,14 @@ public class UserSubscription extends Entity {
     String groupKey;
     String subscriptionStripeId;
     String paymentRef;
+    String pendingRenewalPaymentRef;
+    String lastRenewalPaymentRef;
     UserSubscriptionStatus status;
     String errorMessage;
     Instant startDate;
     Instant endDate;
     List<String> codes;
+    LocalDate lastReminderDate;
 
     Instant lastPaymentTime;
     Instant timestamp;

@@ -9,3 +9,4 @@ Cargo.lock
 /scripts/devnet-test-pay-tribe.ts
 /scripts/devnet-test-payment-flow.ts
 /test/simulate-100-actions.ts
+.env.backup

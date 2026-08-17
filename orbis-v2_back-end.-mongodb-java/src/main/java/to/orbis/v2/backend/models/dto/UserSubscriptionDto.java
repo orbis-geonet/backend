@@ -24,6 +24,7 @@ public class UserSubscriptionDto {
     List<String> benefit;
     Instant startDate;
     Instant endDate;
+    Instant timestamp;
     UserSubscriptionStatus status;
     String errorMessage;
     List<String> codes;

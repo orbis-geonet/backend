@@ -47,10 +47,16 @@ Thumbs.db
 *.flv
 *.mov
 *.wmv
+.tmp*
 
+orbis-v2_back-end.-mongodb-java/appengine-logs.txt
+orbis-v2_back-end.-mongodb-java/gcloud-tail-generated-test.txt
+orbis-v2_back-end.-mongodb-java/gcloud-tail-test.txt
 orbis-v2-firebase-adminsdk-jtef9-4bcf128ec4.json
 secrets.json
 .claude
 
+/CLAUDE_MAINNET_SMART_CONTRACT_UPGRADE.md
+/SOL_ORBIS_VAULT_FLOW.md
+
 orbis_v2_android
-polygon-creator

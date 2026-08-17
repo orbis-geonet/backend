@@ -14,6 +14,11 @@ import java.util.List;
         injectionStrategy = InjectionStrategy.CONSTRUCTOR)
 public interface SubscriptionMapper {
 
+    @Mapping(target = "isSubscriber", ignore = true)
+    @Mapping(target = "startDate", ignore = true)
+    @Mapping(target = "endDate", ignore = true)
+    @Mapping(target = "timestamp", ignore = true)
+    @Mapping(target = "status", ignore = true)
     SubscriptionDto subscriptionToSubscriptionDto(Subscription subscription);
 
     @Mapping(target = "timestamp", expression = "java(java.time.Instant.now())")

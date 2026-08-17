@@ -692,7 +692,7 @@
       "name": "pay_tribe",
       "docs": [
         "Split a single ORBIS payment atomically: 90% tribe owner, 7% clone",
-        "operator, 3% treasury. The payer (buyer) is the only signer \u2014 we never",
+        "operator, 3% treasury. The payer (buyer) is the only signer — we never",
         "custody funds. `payment_ref` is the off-chain correlation/idempotency key",
         "echoed in the emitted event."
       ],
@@ -1604,6 +1604,380 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "init_sol_payment_config",
+      "discriminator": [
+        78,
+        146,
+        182,
+        250,
+        153,
+        239,
+        77,
+        201
+      ],
+      "accounts": [
+        {
+          "name": "sol_payment_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  111,
+                  108,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserve_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  111,
+                  108,
+                  95,
+                  111,
+                  114,
+                  98,
+                  105,
+                  115,
+                  95,
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "orbis_mint"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "orbis_per_sol_rate",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "update_sol_orbis_rate",
+      "discriminator": [
+        127,
+        191,
+        250,
+        91,
+        206,
+        23,
+        246,
+        170
+      ],
+      "accounts": [
+        {
+          "name": "sol_payment_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  111,
+                  108,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "orbis_per_sol_rate",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "pay_tribe_with_sol",
+      "discriminator": [
+        20,
+        36,
+        130,
+        107,
+        205,
+        118,
+        156,
+        4
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "sol_treasury",
+          "writable": true
+        },
+        {
+          "name": "sol_payment_config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  111,
+                  108,
+                  95,
+                  112,
+                  97,
+                  121,
+                  109,
+                  101,
+                  110,
+                  116,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "reserve_vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  111,
+                  108,
+                  95,
+                  111,
+                  114,
+                  98,
+                  105,
+                  115,
+                  95,
+                  114,
+                  101,
+                  115,
+                  101,
+                  114,
+                  118,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "tribe_owner_token_account",
+          "writable": true
+        },
+        {
+          "name": "clone_token_account",
+          "writable": true
+        },
+        {
+          "name": "treasury_token_account",
+          "writable": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "sol_lamports",
+          "type": "u64"
+        },
+        {
+          "name": "min_orbis_amount",
+          "type": "u64"
+        },
+        {
+          "name": "payment_ref",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
     }
   ],
   "accounts": [
@@ -1644,6 +2018,19 @@
         138,
         119,
         198
+      ]
+    },
+    {
+      "name": "SolPaymentConfig",
+      "discriminator": [
+        19,
+        56,
+        113,
+        6,
+        88,
+        23,
+        191,
+        19
       ]
     }
   ],
@@ -1735,6 +2122,16 @@
       "code": 6011,
       "name": "BatchTooLarge",
       "msg": "Batch contains too many entries"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidRate",
+      "msg": "Invalid SOL to ORBIS rate"
+    },
+    {
+      "code": 6013,
+      "name": "SlippageExceeded",
+      "msg": "Quoted ORBIS amount is below the required minimum"
     }
   ],
   "types": [
@@ -1940,6 +2337,18 @@
           },
           {
             "name": "treasury_cut",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SolPaymentConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "orbis_per_sol_rate",
             "type": "u64"
           }
         ]
