@@ -56,7 +56,26 @@ orbis-v2-firebase-adminsdk-jtef9-4bcf128ec4.json
 secrets.json
 .claude
 
+orbis_v2_android
+polygon-creator
+
 /CLAUDE_MAINNET_SMART_CONTRACT_UPGRADE.md
 /SOL_ORBIS_VAULT_FLOW.md
+/TRIBE_COMMERCE_README.md
+/clone-proxy/MAINNET_DEPLOYMENT.md
+/clone-proxy/MAINNET_UPGRADE_README.md
+/clone-proxy/NEXT_STEPS.md
+/clone-proxy/extra-data-flow.md
 
-orbis_v2_android
+.env
+.env.*
+!.env.example
+wallet.json
+*-keypair.json
+*-firebase-adminsdk-*.json
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519

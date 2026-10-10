@@ -40,7 +40,7 @@ It is designed to run next to:
 | `scripts/` | Admin scripts for registration, initialization, minting, and URL updates. |
 | `programs/idl/` | Anchor IDL used to call the Orbis Protocol. |
 | `wallet/` | Local wallet files. Do not commit real wallets. |
-| `extra-data-flow.md` | Detailed notes on how extra linked data is fetched and cached. |
+| `network/extra-data-strategies.ts` | Implementation of linked-data fetching and caching. |
 
 ## Environment
 
@@ -234,7 +234,7 @@ Each clone is both a producer and a consumer.
 
 **Retrieval.** When Java looks up a record and finds a matching `network_events` row, it forwards to the node, which fetches that record from the owning clone, pays through the streaming escrow, caches it locally, and marks the event `synced`. With `AUTO_FETCH_EVENTS=true` the clone instead eagerly fetches and pays for each committed batch's full payload.
 
-MongoDB change streams require a replica set. Without one the proxy still serves and indexes chain data, but cannot watch local changes to publish them. See [Extra Data Flow](./extra-data-flow.md) for linked-object fetch-and-cache details.
+MongoDB change streams require a replica set. Without one the proxy still serves and indexes chain data, but cannot watch local changes to publish them. See [`network/extra-data-strategies.ts`](./network/extra-data-strategies.ts) for linked-object fetch-and-cache behavior.
 
 ## Authentication Architecture
 
@@ -339,6 +339,6 @@ Use a reliable RPC endpoint. Public endpoints are often rate-limited and can mak
 
 ## Related Docs
 
-- [Extra Data Flow](./extra-data-flow.md)
-- [Mainnet Deployment Notes](./MAINNET_DEPLOYMENT.md)
+- [Extra Data Strategies](./network/extra-data-strategies.ts)
+- [Program Source](./programs/orbis-protocol/src/lib.rs)
 - Java backend README: `../orbis-v2_back-end.-mongodb-java/README.md`

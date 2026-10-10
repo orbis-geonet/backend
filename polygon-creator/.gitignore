@@ -39,7 +39,3 @@ out/
 src/main/appengine/app.yaml
 src/main/appengine/app-prod.yaml
 src/main/appengine/app-staging.yaml
-src/main/resources/*.yaml
-src/main/resources/*.yml
-src/main/resources/polindromTest/
-pk.rsa

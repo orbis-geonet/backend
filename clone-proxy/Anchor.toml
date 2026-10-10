@@ -11,9 +11,6 @@ skip-lint = false
 [workspace]
 members = ["programs/orbis-protocol"]
 
-[programs.devnet]
-orbis_protocol = "x2HARL2kBx2jVHtgWvf8sX8zbZ3sBAvtHJeg8AgosqR"
-
 [programs.mainnet]
 orbis_protocol = "x2HARL2kBx2jVHtgWvf8sX8zbZ3sBAvtHJeg8AgosqR"
 

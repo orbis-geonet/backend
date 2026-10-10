@@ -15,3 +15,4 @@ anchor-lang = { workspace = true }
 anchor-spl = { workspace = true }
 solana-instructions-sysvar = "3.0.0"
 solana-sha256-hasher = "3.1.0"
+pyth-solana-receiver-sdk = "=2.0.0"

@@ -27,6 +27,16 @@ const LAMPORTS_PER_SOL = 1_000_000_000n;
 const BPS_DENOMINATOR = 10_000n;
 const CLONE_BPS = 700n;
 const TREASURY_BPS = 300n;
+const PYTH_SOL_USD_PRICE_ACCOUNT = new PublicKey("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE");
+const PYTH_RECEIVER_PROGRAM_ID = new PublicKey("rec5EKMGg6MxZYaMdyBfgwp4d5rB9T1VQH5pJv5LtFJ");
+const PYTH_PRICE_UPDATE_V2_DISCRIMINATOR = Buffer.from([34, 241, 35, 99, 157, 126, 244, 205]);
+const PYTH_SOL_USD_FEED_ID = Buffer.from([
+    239, 13, 139, 111, 218, 44, 235, 164, 29, 161, 93, 64, 149, 209, 218, 57, 42, 13, 47, 142, 208, 198,
+    199, 188, 15, 76, 250, 200, 194, 128, 181, 109,
+]);
+const PYTH_MAX_PRICE_AGE_SECONDS = 90n;
+const MAX_ORACLE_CONFIDENCE_BPS = 100n;
+const ORBIS_DECIMALS = 6;
 
 function short(value: unknown): string {
     const text = String(value || "");
@@ -104,6 +114,45 @@ function formatUnits(units: bigint, decimals: number): string {
     const whole = units / base;
     const fraction = (units % base).toString().padStart(decimals, "0").replace(/0+$/, "");
     return fraction ? `${whole}.${fraction}` : whole.toString();
+}
+
+function pow10(exponent: number): bigint {
+    let value = 1n;
+    for (let index = 0; index < exponent; index += 1) value *= 10n;
+    return value;
+}
+
+async function getPythOrbisPerSolRate(connection: Connection): Promise<bigint> {
+    const account = await connection.getAccountInfo(PYTH_SOL_USD_PRICE_ACCOUNT, "confirmed");
+    if (!account || !account.owner.equals(PYTH_RECEIVER_PROGRAM_ID)) throw new Error("Invalid Pyth SOL/USD price account");
+
+    const data = account.data;
+    if (data.length < 133 || !data.subarray(0, 8).equals(PYTH_PRICE_UPDATE_V2_DISCRIMINATOR)) {
+        throw new Error("Pyth SOL/USD price account has invalid data");
+    }
+    if (data[40] !== 1 || !data.subarray(41, 73).equals(PYTH_SOL_USD_FEED_ID)) {
+        throw new Error("Pyth SOL/USD price is not fully verified or has the wrong feed ID");
+    }
+
+    const price = data.readBigInt64LE(73);
+    const confidence = data.readBigUInt64LE(81);
+    const exponent = data.readInt32LE(89);
+    const publishTime = data.readBigInt64LE(93);
+    const currentTime = BigInt(Math.floor(Date.now() / 1000));
+
+    if (price <= 0n || publishTime > currentTime || currentTime - publishTime > PYTH_MAX_PRICE_AGE_SECONDS) {
+        throw new Error("Pyth SOL/USD price is invalid or stale");
+    }
+    if (confidence * BPS_DENOMINATOR > price * MAX_ORACLE_CONFIDENCE_BPS) {
+        throw new Error("Pyth SOL/USD confidence interval is too wide");
+    }
+
+    const adjustedPrice = price - confidence;
+    if (adjustedPrice <= 0n) throw new Error("Pyth SOL/USD price is invalid");
+
+    const scale = exponent + ORBIS_DECIMALS;
+    if (!Number.isSafeInteger(scale) || Math.abs(scale) > 38) throw new Error("Pyth SOL/USD exponent is unsupported");
+    return scale >= 0 ? adjustedPrice * pow10(scale) : adjustedPrice / pow10(-scale);
 }
 
 function splitTribeAmount(amount: bigint) {
@@ -408,12 +457,12 @@ export async function createSolPaymentIntent(db: any, p: IntentParams): Promise<
         const mint = new PublicKey(config.orbisMint);
         const treasury = new PublicKey(config.treasury);
         const decimals = (await getMint(connection, mint)).decimals;
+        if (decimals !== ORBIS_DECIMALS) throw new Error(`ORBIS mint must use ${ORBIS_DECIMALS} decimals`);
         paymentLog(trace, `config ok mint=${mint.toBase58()} treasury=${treasury.toBase58()} decimals=${decimals}`);
-        stage = "sol-payment-config";
+        stage = "pyth-price";
         const [solPaymentConfigPda] = PublicKey.findProgramAddressSync([Buffer.from("sol_payment_config")], pid);
         const [reserveVault] = PublicKey.findProgramAddressSync([Buffer.from("sol_orbis_reserve_vault")], pid);
-        const solPaymentConfig: any = await (program.account as any).solPaymentConfig.fetch(solPaymentConfigPda);
-        const orbisPerSolRaw = BigInt(solPaymentConfig.orbisPerSolRate.toString());
+        const orbisPerSolRaw = await getPythOrbisPerSolRate(connection);
         stage = "wallets";
         const payer = new PublicKey(p.payerWallet);
         const owner = new PublicKey(p.ownerWallet);
@@ -436,6 +485,7 @@ export async function createSolPaymentIntent(db: any, p: IntentParams): Promise<
             treasury: treasury.toBase58(),
             solTreasury: treasury.toBase58(),
             solPaymentConfig: solPaymentConfigPda.toBase58(),
+            solUsdPriceUpdate: PYTH_SOL_USD_PRICE_ACCOUNT.toBase58(),
             ownerAta: ownerAta.toBase58(),
             cloneAta: cloneAta.toBase58(),
             treasuryAta: treasuryAta.toBase58(),
@@ -517,6 +567,7 @@ export async function createSolPaymentIntent(db: any, p: IntentParams): Promise<
                 cloneTokenAccount: cloneAta,
                 treasuryTokenAccount: treasuryAta,
                 config: configPda,
+                solUsdPriceUpdate: PYTH_SOL_USD_PRICE_ACCOUNT,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: SystemProgram.programId,
             } as any)

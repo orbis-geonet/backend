@@ -1,0 +1,25 @@
+runtime: java11
+env: standard
+
+entrypoint: java -XshowSettings -Xmx64m -XX:+UseContainerSupport -jar orbisv2-backend-0.0.1-SNAPSHOT.jar
+
+handlers:
+  - url: /.*
+    script: this field is required, but ignored
+    secure: always
+
+service: backend-staging
+
+env_variables:
+  SPRING_PROFILES_ACTIVE: staging
+  MONGOPASSWORD: "REPLACE_WITH_MONGOPASSWORD"
+  IGSECRET: "REPLACE_WITH_IGSECRET"
+  APIKEY: "REPLACE_WITH_APIKEY"
+
+instance_class: F2
+automatic_scaling:
+  max_instances: 1
+  min_instances: 1
+  min_pending_latency: 10000ms
+  max_pending_latency: 15000ms
+  max_concurrent_requests: 80

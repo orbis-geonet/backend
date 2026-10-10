@@ -20,6 +20,8 @@
     "test:api": "tsx test/get_and_use_api_key.ts",
     "test:idl": "tsx test/fetch_idl.ts",
     "sol-payment-config": "tsx scripts/sol-payment-config.ts",
+    "admin:withdraw-sol": "tsx scripts/admin-withdraw-sol.ts",
+    "admin:withdraw-orbis": "tsx scripts/admin-withdraw-orbis.ts",
     "lint": "prettier . --check",
     "lint:fix": "prettier . --write",
     "send": "tsx test/send_orbis.ts send",

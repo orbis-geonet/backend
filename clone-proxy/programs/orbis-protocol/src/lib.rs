@@ -1,7 +1,18 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use pyth_solana_receiver_sdk::price_update::{PriceUpdateV2, VerificationLevel};
 use solana_instructions_sysvar::load_instruction_at_checked;
+
+const SOL_USD_PRICE_FEED: Pubkey = pubkey!("7UVimffxr9ow1uXYxsr4LHAcV58mLzhmwaeKvJ1pjLiE");
+const SOL_USD_FEED_ID: [u8; 32] = [
+    239, 13, 139, 111, 218, 44, 235, 164, 29, 161, 93, 64, 149, 209, 218, 57, 42, 13, 47, 142, 208,
+    198, 199, 188, 15, 76, 250, 200, 194, 128, 181, 109,
+];
+const PYTH_MAX_PRICE_AGE_SECONDS: u64 = 90;
+const MAX_ORACLE_CONFIDENCE_BPS: u128 = 100;
+const BPS_DENOMINATOR: u128 = 10_000;
+const ORBIS_DECIMALS: i32 = 6;
 
 pub mod noop_program {
     anchor_lang::declare_id!("noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV");
@@ -543,10 +554,8 @@ pub mod orbis_protocol {
     ) -> Result<()> {
         require!(sol_lamports > 0, ErrorCode::ArithmeticError);
 
-        let sol_payment_config = &ctx.accounts.sol_payment_config;
-        require!(sol_payment_config.orbis_per_sol_rate > 0, ErrorCode::InvalidRate);
-
-        let amount = quote_sol_to_orbis(sol_lamports, sol_payment_config.orbis_per_sol_rate)?;
+        let rate = get_orbis_per_sol_rate(&ctx.accounts.sol_usd_price_update, false)?;
+        let amount = quote_sol_to_orbis(sol_lamports, rate)?;
         require!(amount >= min_orbis_amount, ErrorCode::SlippageExceeded);
         require!(amount > 0, ErrorCode::ArithmeticError);
         let (owner_cut, clone_cut, treasury_cut) = split_tribe_amount(amount)?;
@@ -621,6 +630,164 @@ pub mod orbis_protocol {
 
         Ok(())
     }
+
+    pub fn buy_orbis(
+        ctx: Context<BuyOrbis>,
+        sol_lamports: u64,
+        min_orbis_amount: u64,
+    ) -> Result<()> {
+        require!(sol_lamports > 0, ErrorCode::ArithmeticError);
+
+        let rate = get_orbis_per_sol_rate(&ctx.accounts.sol_usd_price_update, false)?;
+
+        let orbis_amount = quote_sol_to_orbis(sol_lamports, rate)?;
+        require!(orbis_amount >= min_orbis_amount, ErrorCode::SlippageExceeded);
+        require!(orbis_amount > 0, ErrorCode::ArithmeticError);
+        require!(
+            ctx.accounts.reserve_vault.amount >= orbis_amount,
+            ErrorCode::InsufficientTreasuryBalance
+        );
+
+        let transfer_ix = solana_program::system_instruction::transfer(
+            &ctx.accounts.buyer.key(),
+            &ctx.accounts.sol_vault.key(),
+            sol_lamports,
+        );
+        solana_program::program::invoke(
+            &transfer_ix,
+            &[
+                ctx.accounts.buyer.to_account_info(),
+                ctx.accounts.sol_vault.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+        )?;
+
+        let seeds = &[b"sol_orbis_reserve_vault".as_ref(), &[ctx.bumps.reserve_vault]];
+        let signer = &[&seeds[..]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.key(),
+                Transfer {
+                    from: ctx.accounts.reserve_vault.to_account_info(),
+                    to: ctx.accounts.buyer_token_account.to_account_info(),
+                    authority: ctx.accounts.reserve_vault.to_account_info(),
+                },
+                signer,
+            ),
+            orbis_amount,
+        )?;
+
+        Ok(())
+    }
+
+    pub fn sell_orbis(
+        ctx: Context<SellOrbis>,
+        orbis_amount: u64,
+        min_sol_lamports: u64,
+    ) -> Result<()> {
+        require!(orbis_amount > 0, ErrorCode::ArithmeticError);
+
+        let rate = get_orbis_per_sol_rate(&ctx.accounts.sol_usd_price_update, true)?;
+
+        let sol_lamports = quote_orbis_to_sol(orbis_amount, rate)?;
+        require!(sol_lamports >= min_sol_lamports, ErrorCode::SlippageExceeded);
+        require!(sol_lamports > 0, ErrorCode::ArithmeticError);
+        require!(
+            ctx.accounts.sol_vault.lamports() >= sol_lamports,
+            ErrorCode::InsufficientTreasuryBalance
+        );
+
+        token::transfer(
+            CpiContext::new(
+                ctx.accounts.token_program.key(),
+                Transfer {
+                    from: ctx.accounts.seller_token_account.to_account_info(),
+                    to: ctx.accounts.reserve_vault.to_account_info(),
+                    authority: ctx.accounts.seller.to_account_info(),
+                },
+            ),
+            orbis_amount,
+        )?;
+
+        let seeds = &[b"exchange_sol_vault".as_ref(), &[ctx.bumps.sol_vault]];
+        let signer_seeds = &[&seeds[..]];
+        let transfer_ix = solana_program::system_instruction::transfer(
+            &ctx.accounts.sol_vault.key(),
+            &ctx.accounts.seller.key(),
+            sol_lamports,
+        );
+        solana_program::program::invoke_signed(
+            &transfer_ix,
+            &[
+                ctx.accounts.sol_vault.to_account_info(),
+                ctx.accounts.seller.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+            signer_seeds,
+        )?;
+
+        Ok(())
+    }
+
+    pub fn admin_withdraw_sol(
+        ctx: Context<AdminWithdrawSol>,
+        sol_lamports: u64,
+    ) -> Result<()> {
+        require!(sol_lamports > 0, ErrorCode::ArithmeticError);
+        require!(
+            ctx.accounts.sol_vault.lamports() >= sol_lamports,
+            ErrorCode::InsufficientTreasuryBalance
+        );
+
+        let seeds = &[b"exchange_sol_vault".as_ref(), &[ctx.bumps.sol_vault]];
+        let signer_seeds = &[&seeds[..]];
+        let transfer_ix = solana_program::system_instruction::transfer(
+            &ctx.accounts.sol_vault.key(),
+            &ctx.accounts.recipient.key(),
+            sol_lamports,
+        );
+        solana_program::program::invoke_signed(
+            &transfer_ix,
+            &[
+                ctx.accounts.sol_vault.to_account_info(),
+                ctx.accounts.recipient.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+            signer_seeds,
+        )?;
+
+        Ok(())
+    }
+
+    pub fn admin_withdraw_orbis(
+        ctx: Context<AdminWithdrawOrbis>,
+        orbis_amount: u64,
+    ) -> Result<()> {
+        require!(orbis_amount > 0, ErrorCode::ArithmeticError);
+        require!(
+            ctx.accounts.reserve_vault.amount >= orbis_amount,
+            ErrorCode::InsufficientTreasuryBalance
+        );
+
+        let seeds = &[b"sol_orbis_reserve_vault".as_ref(), &[ctx.bumps.reserve_vault]];
+        let signer = &[&seeds[..]];
+
+        token::transfer(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.key(),
+                Transfer {
+                    from: ctx.accounts.reserve_vault.to_account_info(),
+                    to: ctx.accounts.recipient_token_account.to_account_info(),
+                    authority: ctx.accounts.reserve_vault.to_account_info(),
+                },
+                signer,
+            ),
+            orbis_amount,
+        )?;
+
+        Ok(())
+    }
 }
 
 fn split_tribe_amount(amount: u64) -> Result<(u64, u64, u64)> {
@@ -653,6 +820,84 @@ fn quote_sol_to_orbis(sol_lamports: u64, orbis_per_sol_rate: u64) -> Result<u64>
         / 1_000_000_000u128;
     require!(amount <= u64::MAX as u128, ErrorCode::ArithmeticError);
     Ok(amount as u64)
+}
+
+fn quote_orbis_to_sol(orbis_amount: u64, orbis_per_sol_rate: u64) -> Result<u64> {
+    let numerator = (orbis_amount as u128)
+        .checked_mul(1_000_000_000u128)
+        .ok_or(error!(ErrorCode::ArithmeticError))?;
+    let amount = numerator / orbis_per_sol_rate as u128;
+    require!(amount <= u64::MAX as u128, ErrorCode::ArithmeticError);
+    Ok(amount as u64)
+}
+
+fn get_orbis_per_sol_rate(price_update: &Account<PriceUpdateV2>, round_up: bool) -> Result<u64> {
+    let price = price_update
+        .get_price_no_older_than_with_custom_verification_level(
+            &Clock::get()?,
+            PYTH_MAX_PRICE_AGE_SECONDS,
+            &SOL_USD_FEED_ID,
+            VerificationLevel::Full,
+        )
+        .map_err(|_| error!(ErrorCode::InvalidOraclePrice))?;
+
+    require!(price.price > 0, ErrorCode::InvalidOraclePrice);
+
+    let raw_price = price.price as u128;
+    let confidence = price.conf as u128;
+    let confidence_bps = confidence
+        .checked_mul(BPS_DENOMINATOR)
+        .ok_or(error!(ErrorCode::ArithmeticError))?;
+    let maximum_confidence = raw_price
+        .checked_mul(MAX_ORACLE_CONFIDENCE_BPS)
+        .ok_or(error!(ErrorCode::ArithmeticError))?;
+
+    require!(
+        confidence_bps <= maximum_confidence,
+        ErrorCode::OracleConfidenceTooWide
+    );
+
+    let adjusted_price = if round_up {
+        raw_price
+            .checked_add(confidence)
+            .ok_or(error!(ErrorCode::ArithmeticError))?
+    } else {
+        raw_price
+            .checked_sub(confidence)
+            .ok_or(error!(ErrorCode::InvalidOraclePrice))?
+    };
+    let scale = price
+        .exponent
+        .checked_add(ORBIS_DECIMALS)
+        .ok_or(error!(ErrorCode::ArithmeticError))?;
+
+    let rate = if scale >= 0 {
+        adjusted_price
+            .checked_mul(
+                10u128
+                    .checked_pow(scale as u32)
+                    .ok_or(error!(ErrorCode::ArithmeticError))?,
+            )
+            .ok_or(error!(ErrorCode::ArithmeticError))?
+    } else {
+        let decimal_places = scale
+            .checked_neg()
+            .ok_or(error!(ErrorCode::ArithmeticError))?;
+        let divisor = 10u128
+            .checked_pow(decimal_places as u32)
+            .ok_or(error!(ErrorCode::ArithmeticError))?;
+        if round_up {
+            adjusted_price
+                .checked_add(divisor - 1)
+                .ok_or(error!(ErrorCode::ArithmeticError))?
+                / divisor
+        } else {
+            adjusted_price / divisor
+        }
+    };
+
+    require!(rate > 0 && rate <= u64::MAX as u128, ErrorCode::InvalidRate);
+    Ok(rate as u64)
 }
 
 #[derive(Accounts)]
@@ -1086,6 +1331,12 @@ pub enum ErrorCode {
     InvalidRate,
     #[msg("Quoted ORBIS amount is below the required minimum")]
     SlippageExceeded,
+    #[msg("Treasury has insufficient liquidity")]
+    InsufficientTreasuryBalance,
+    #[msg("Pyth SOL/USD price is invalid, stale, or not fully verified")]
+    InvalidOraclePrice,
+    #[msg("Pyth SOL/USD confidence interval is too wide")]
+    OracleConfidenceTooWide,
 }
 
 #[event]
@@ -1170,8 +1421,129 @@ pub struct PayTribeWithSol<'info> {
     pub treasury_token_account: Account<'info, TokenAccount>,
     #[account(seeds = [b"global_config"], bump)]
     pub config: Account<'info, GlobalConfig>,
+    #[account(address = SOL_USD_PRICE_FEED)]
+    pub sol_usd_price_update: Account<'info, PriceUpdateV2>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct BuyOrbis<'info> {
+    #[account(mut)]
+    pub buyer: Signer<'info>,
+    #[account(
+        mut,
+        constraint = buyer_token_account.owner == buyer.key() @ ErrorCode::InvalidTokenAccount,
+        constraint = buyer_token_account.mint == config.orbis_mint @ ErrorCode::InvalidTokenAccount,
+    )]
+    pub buyer_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        seeds = [b"exchange_sol_vault"],
+        bump
+    )]
+    pub sol_vault: SystemAccount<'info>,
+    #[account(
+        seeds = [b"sol_payment_config"],
+        bump
+    )]
+    pub sol_payment_config: Account<'info, SolPaymentConfig>,
+    #[account(
+        mut,
+        seeds = [b"sol_orbis_reserve_vault"],
+        bump,
+        constraint = reserve_vault.owner == reserve_vault.key() @ ErrorCode::InvalidTokenAccount,
+        constraint = reserve_vault.mint == config.orbis_mint @ ErrorCode::InvalidTokenAccount,
+    )]
+    pub reserve_vault: Account<'info, TokenAccount>,
+    #[account(seeds = [b"global_config"], bump)]
+    pub config: Account<'info, GlobalConfig>,
+    #[account(address = SOL_USD_PRICE_FEED)]
+    pub sol_usd_price_update: Account<'info, PriceUpdateV2>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct SellOrbis<'info> {
+    #[account(mut)]
+    pub seller: Signer<'info>,
+    #[account(
+        mut,
+        constraint = seller_token_account.owner == seller.key() @ ErrorCode::InvalidTokenAccount,
+        constraint = seller_token_account.mint == config.orbis_mint @ ErrorCode::InvalidTokenAccount,
+    )]
+    pub seller_token_account: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        seeds = [b"exchange_sol_vault"],
+        bump
+    )]
+    pub sol_vault: SystemAccount<'info>,
+    #[account(
+        seeds = [b"sol_payment_config"],
+        bump
+    )]
+    pub sol_payment_config: Account<'info, SolPaymentConfig>,
+    #[account(
+        mut,
+        seeds = [b"sol_orbis_reserve_vault"],
+        bump,
+        constraint = reserve_vault.owner == reserve_vault.key() @ ErrorCode::InvalidTokenAccount,
+        constraint = reserve_vault.mint == config.orbis_mint @ ErrorCode::InvalidTokenAccount,
+    )]
+    pub reserve_vault: Account<'info, TokenAccount>,
+    #[account(seeds = [b"global_config"], bump)]
+    pub config: Account<'info, GlobalConfig>,
+    #[account(address = SOL_USD_PRICE_FEED)]
+    pub sol_usd_price_update: Account<'info, PriceUpdateV2>,
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct AdminWithdrawSol<'info> {
+    #[account(
+        seeds = [b"global_config"],
+        bump,
+        has_one = admin @ ErrorCode::Unauthorized
+    )]
+    pub config: Account<'info, GlobalConfig>,
+    pub admin: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [b"exchange_sol_vault"],
+        bump
+    )]
+    pub sol_vault: SystemAccount<'info>,
+    #[account(mut)]
+    pub recipient: SystemAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct AdminWithdrawOrbis<'info> {
+    #[account(
+        seeds = [b"global_config"],
+        bump,
+        has_one = admin @ ErrorCode::Unauthorized
+    )]
+    pub config: Account<'info, GlobalConfig>,
+    pub admin: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [b"sol_orbis_reserve_vault"],
+        bump,
+        constraint = reserve_vault.owner == reserve_vault.key() @ ErrorCode::InvalidTokenAccount,
+        constraint = reserve_vault.mint == config.orbis_mint @ ErrorCode::InvalidTokenAccount,
+    )]
+    pub reserve_vault: Account<'info, TokenAccount>,
+    #[account(
+        mut,
+        constraint = recipient_token_account.mint == config.orbis_mint @ ErrorCode::InvalidTokenAccount,
+    )]
+    pub recipient_token_account: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[event]

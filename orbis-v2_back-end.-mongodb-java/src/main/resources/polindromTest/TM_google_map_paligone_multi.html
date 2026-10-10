@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Palindrome</title>
+    <style>
+        #map {
+            height: 500px;
+            width: 100%;
+        }
+    </style>
+    <script src="https://maps.googleapis.com/maps/api/js?key=REPLACE_WITH_GOOGLE_MAPS_API_KEY" defer></script>
+</head>
+
+<body>
+    <h1>Map Palindrome</h1>
+
+    <label for="latitude">Latitude:</label>
+    <!-- <input type="number" id="latitude" name="latitude" value="-34.901112" step="any"> -->
+    <input type="number" id="latitude" name="latitude" value="-34.622322" step="any">
+    <label for="longitude">Longitude:</label>
+    <!-- <input type="number" id="longitude" name="longitude" value="-56.164532" step="any"> -->
+    <input type="number" id="longitude" name="longitude" value="-58.504532" step="any">
+    <label for="distance">Distance:</label>
+    <input type="number" id="distance" name="distance" value="100">
+    <label for="size">Size:</label>
+    <input type="number" id="size" name="size" value="25">
+
+    <label for="isShowPolygonPoints">Show Polygon Points:</label>
+    <input type="checkbox" id="isShowPolygonPoints" name="isShowPolygonPoints" checked>
+    <label for="isShowPolygonPointsBeforeMerge">Show Polygon Points Before Merge:</label>
+    <input type="checkbox" id="isShowPolygonPointsBeforeMerge" name="isShowPolygonPointsBeforeMerge" checked>
+
+    <button id="updateMap">Update Map</button>
+
+    <div id="map"></div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 13,
+                center: { lat: -34.901112, lng: -56.164532 },
+            });
+
+            function updateMap() {
+                const latitude = parseFloat(document.getElementById("latitude").value);
+                const longitude = parseFloat(document.getElementById("longitude").value);
+                const distance = document.getElementById("distance").value;
+                const isShowPolygonPoints = document.getElementById("isShowPolygonPoints").checked;
+                const isShowPolygonPointsBeforeMerge = document.getElementById("isShowPolygonPointsBeforeMerge").checked;
+
+                const groupKeysArray = [
+                    "6317379387ce290f33452d60",
+                    "631737c369878f4d7e8497ec",
+                    "63a3f24b6a7af63e8b1ab3b2",
+                    "65d34a1b16b1393dc372e5ae",
+                    "631737d6ac693a60ab6d5d91",
+                    "6317379187ce290f33452d51",
+                    "61e048fd0b7769177d251282"
+                ];
+
+                const groupKeys = groupKeysArray.join(',');
+                console.log('groupkeys: ', groupKeys)
+
+                // NEW MAP-PALINDROME-MULTI
+                // const url = `http://localhost:8080/places/map-palindrome-multi?latitude=${latitude}&longitude=${longitude}&distance=${distance}&groupKeys=${groupKeys}`;
+
+                // OLD IMPL FOR THE WHOLE MAP:
+                const url = `http://localhost:8080/places/map-palindrome?latitude=${latitude}&longitude=${longitude}&distance=${distance}`;
+
+                // NEW MAP-PALINDROME-MULTI V2
+                // const url = `http://localhost:8080/places/map-palindrome-multi?latitude=${latitude}&longitude=${longitude}&distance=${distance}&groupKeys=${groupKeys}`;
+
+                // NEWEST IMPL WITH SAVED POLYGONS
+                // const url = `http://localhost:8080/places/map-palindrome?latitude=${latitude}&longitude=${longitude}&distance=${distance}`;
+
+                fetch(url, {
+                    method: 'GET',
+                })
+                    .then(response => {
+                        console.log('RES: ', response);
+                        return response.json()
+                    })
+                    .then(data => {
+                        data.palindromeCoordinates = null
+                        var styles = [
+                            {
+                                featureType: "poi",
+                                elementType: "business",
+                                stylers: [
+                                    { visibility: "off" }
+                                ]
+                            }
+                        ];
+
+                        map.setOptions({ styles: styles });
+
+
+                        // Clear existing circles and polylines
+                        if (map.circles) {
+                            map.circles.forEach(circle => circle.setMap(null));
+                            map.circles = [];
+                        } else {
+                            map.circles = [];
+                        }
+
+                        if (map.polylines) {
+                            map.polylines.forEach(polyline => polyline.setMap(null));
+                            map.polylines = [];
+                        } else {
+                            map.polylines = [];
+                        }
+
+                        // Clear existing markers
+                        if (map.markers) {
+                            map.markers.forEach(marker => marker.setMap(null));
+                            map.markers = [];
+                        } else {
+                            map.markers = [];
+                        }
+
+                        // Update map center
+                        map.setCenter({ lat: latitude, lng: longitude });
+
+                        data.forEach(place => {
+                            const color = place.places[0].dominantGroup.solidColorHex;
+
+                            // Draw polygonPoints
+                            if (isShowPolygonPoints && place.polygonPoints) {
+                                const path = place.polygonPoints.map(point => ({
+                                    lat: point.latitude,
+                                    lng: point.longitude
+                                }));
+
+                                const polyline = new google.maps.Polyline({
+                                    path: path,
+                                    geodesic: true,
+                                    strokeColor: color,
+                                    strokeOpacity: 0.8,
+                                    strokeWeight: 2,
+                                    map: map
+                                });
+                                map.polylines.push(polyline);
+                            }
+
+                            // Draw polygonPointsBeforeMerge
+                            if (isShowPolygonPointsBeforeMerge && place.polygonPointsBeforeMerge) {
+                                place.polygonPointsBeforeMerge.forEach(line => {
+                                    const path = line.map(point => ({
+                                        lat: point.latitude,
+                                        lng: point.longitude
+                                    }));
+
+                                    const polyline = new google.maps.Polyline({
+                                        path: path,
+                                        geodesic: true,
+                                        strokeColor: color,
+                                        strokeOpacity: 0.8,
+                                        strokeWeight: 2,
+                                        map: map
+                                    });
+                                    map.polylines.push(polyline);
+
+                                    // Optionally, add dots at each point
+                                    path.forEach(point => {
+                                        const dot = new google.maps.Circle({
+                                            strokeColor: color,
+                                            strokeOpacity: 0.8,
+                                            strokeWeight: 2,
+                                            fillColor: color,
+                                            fillOpacity: 0.35,
+                                            map: map,
+                                            center: point,
+                                            radius: 5
+                                        });
+                                        map.circles.push(dot);
+                                    });
+                                });
+                            }
+
+                            // Draw polygonCenter
+                            if (place.polygonCenter) {
+                                const centerMarker = new google.maps.Marker({
+                                    position: { lat: place.polygonCenter.latitude, lng: place.polygonCenter.longitude },
+                                    map: map,
+                                    title: 'Polygon Center',
+                                    icon: {
+                                        path: google.maps.SymbolPath.CIRCLE,
+                                        scale: 5,
+                                        fillColor: color,
+                                        fillOpacity: 1,
+                                        strokeWeight: 0
+                                    }
+                                });
+                                map.markers.push(centerMarker);
+                            }
+                        });
+                    })
+                    .catch(error => console.error("Error fetching data:", error));
+            }
+
+            document.getElementById("updateMap").addEventListener("click", updateMap);
+
+            // Initial map update
+            updateMap();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,29 @@
+spring:
+  data:
+    mongodb:
+      database: orbis-converted
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 500
+          batch_versioned_data: true
+        order_updates: true
+        order_inserts: true
+
+server:
+  port: ${port:8090}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,metrics,prometheus"
+
+app:
+  polygon-calculation:
+    enable: true
+    test-controller-enable: false
+    check-in-point-thread-number: 5
+    trigger-point-thread-number: 7
+    delay-in-sec: 1

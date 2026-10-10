@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>South America Circles Map</title>
+    <style>
+        #map {
+            height: 600px;
+            width: 100%;
+        }
+    </style>
+    <!-- Replace with your Google Maps API key -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=REPLACE_WITH_GOOGLE_MAPS_API_KEY" defer></script>
+</head>
+
+<body>
+    <h1>South America Circles Map</h1>
+
+    <div id="map"></div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 4,
+                center: { lat: -25, lng: -60 } // Initial center point for South America
+            });
+
+            const url = `http://localhost:8080/polygon-calculations/coordinates/sa`;
+
+            function updateMap() {
+                fetch(url) // Fetch data from your endpoint
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(coordinate => {
+                            // Draw circle on the map
+                            new google.maps.Circle({
+                                strokeColor: '#FF0000',
+                                strokeOpacity: 0.8,
+                                strokeWeight: 2,
+                                fillColor: coordinate.enabled ? '#FF0000' : 'yellow',
+                                fillOpacity: 0.35,
+                                map: map,
+                                center: { lat: coordinate.latitude, lng: coordinate.longitude },
+                                radius: coordinate.radius * 1000 // Convert radius from km to meters
+                            });
+                        });
+                    })
+                    .catch(error => console.error('Error fetching coordinates:', error));
+            }
+
+            // Call updateMap initially and on button click
+            updateMap();
+
+            // Optionally, you can add a button to update the map
+            const updateButton = document.createElement('button');
+            updateButton.textContent = 'Update Map';
+            updateButton.addEventListener('click', updateMap);
+            document.body.appendChild(updateButton);
+        });
+    </script>
+</body>
+
+</html>

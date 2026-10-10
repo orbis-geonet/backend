@@ -1,0 +1,5 @@
+spring:
+  data:
+    mongodb:
+      database: orbisv2production
+      uri: ${MONGO_URI}

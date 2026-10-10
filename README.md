@@ -179,7 +179,7 @@ npm run update-clone -- -- --url https://genesis.orbis.social --wallet .\wallet\
 
 - Java backend: [`orbis-v2_back-end.-mongodb-java/README.md`](./orbis-v2_back-end.-mongodb-java/README.md)
 - Clone proxy: [`clone-proxy/README.md`](./clone-proxy/README.md)
-- Clone extra data flow: [`clone-proxy/extra-data-flow.md`](./clone-proxy/extra-data-flow.md)
+- Clone synchronization and authentication: [`clone-proxy/README.md`](./clone-proxy/README.md)
 
 ## Development Workflow
 

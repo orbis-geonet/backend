@@ -1,0 +1,18 @@
+runtime: java17
+
+entrypoint: java -XshowSettings -Xmx1024m -XX:+UseContainerSupport -jar orbisv2-backend-0.0.1-SNAPSHOT.jar
+
+handlers:
+  - url: /.*
+    script: this field is required, but ignored
+    secure: always
+
+env_variables:
+  SPRING_PROFILES_ACTIVE: prod
+  MONGOPASSWORD: "REPLACE_WITH_MONGOPASSWORD"
+  IGSECRET: "REPLACE_WITH_IGSECRET"
+  APIKEY: "REPLACE_WITH_APIKEY"
+  ORBIS_API_SECRET: "REPLACE_WITH_ORBIS_API_SECRET"
+  NODEJS_WORKER_URL: "http://45.79.214.26:3000"
+
+instance_class: F2

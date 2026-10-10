@@ -1,0 +1,24 @@
+spring:
+  data:
+    mongodb:
+      database: orbisv2production
+      uri: ${MONGO_URI}
+
+logging:
+  level:
+    org:
+      springframework:
+        data:
+          mongodb:
+            core:
+              MongoTemplate: DEBUG
+            repository:
+              query: DEBUG
+
+app:
+  polygon-calculation:
+    enable: true
+    test-controller-enable: false
+    delay-in-sec: 1
+    start-page: 0
+    page-size: 3
